@@ -1,0 +1,16 @@
+# 本地数据目录，不同步到 GitHub
+chatdata/
+eventdata/
+notefile/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+venv/
+
+# 系统文件
+.DS_Store
+*.log
