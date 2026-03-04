@@ -41,7 +41,7 @@ function saveDataToLocalStorage() {
             notes: state.notes,
             events: state.events.map(e => ({ ...e, expanded: false }))
         };
-        localStorage.setItem('notemind_notes_events', JSON.stringify(data));
+        localStorage.setItem('chickennotelm_notes_events', JSON.stringify(data));
         syncNotesAndEventsToServer(data);
     } catch (e) {
         console.error('保存到localStorage失败', e);
@@ -66,7 +66,15 @@ async function syncNotesAndEventsToServer(data) {
 }
 
 window.loadDataFromLocalStorage = function() {
-    const stored = localStorage.getItem('notemind_notes_events');
+    let stored = localStorage.getItem('chickennotelm_notes_events');
+    // 兼容旧版：若新 key 为空但存在旧 key，迁移过来
+    if (!stored && localStorage.getItem('notemind_notes_events')) {
+        stored = localStorage.getItem('notemind_notes_events');
+        try {
+            const parsed = JSON.parse(stored);
+            localStorage.setItem('chickennotelm_notes_events', JSON.stringify(parsed));
+        } catch (e) { stored = null; }
+    }
     if (stored) {
         try {
             const { notes, events } = JSON.parse(stored);
@@ -77,17 +85,35 @@ window.loadDataFromLocalStorage = function() {
         }
     }
 
-    // 如果没有笔记，添加示例笔记
-    if (!state.notes.length) {
-        state.notes = [
-            { id: '1', title: '项目规划会议', content: '# 会议记录\n\n- [ ] 确定UI卡片圆角风格（今天）\n- [ ] 实现拖拽修改列宽功能', updatedAt: new Date().toISOString() },
-            { id: '2', title: '学习计划', content: '本周重点：\n1. 深入学习 Tailwind\n2. 整理Flex布局的最佳实践\n*注意：下周一需要提交 Demo*。', updatedAt: new Date(Date.now() - 86400000).toISOString() }
-        ];
-    }
-
     if (!state.currentNoteId && state.notes.length) {
         state.currentNoteId = state.notes[0].id;
     }
+};
+
+// 当本地无笔记时，从后端 notefile/ 拉取（兼容「只有磁盘文件、无 localStorage」的情况）
+window.loadDataFromServerIfEmpty = function() {
+    if (state.notes.length > 0) return Promise.resolve();
+    return fetch('http://127.0.0.1:5002/api/notes')
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .then(function(data) {
+            if (data && Array.isArray(data.notes) && data.notes.length > 0) {
+                state.notes = data.notes;
+                if (!state.currentNoteId) state.currentNoteId = state.notes[0].id;
+                var payload = { notes: state.notes, events: state.events.map(function(e) { return Object.assign({}, e, { expanded: false }); }) };
+                localStorage.setItem('chickennotelm_notes_events', JSON.stringify(payload));
+            }
+        })
+        .catch(function() {})
+        .then(function() {
+            return fetch('http://127.0.0.1:5002/api/events').then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+                if (data && Array.isArray(data.events) && data.events.length > 0) {
+                    state.events = (data.events || []).map(function(e) { return Object.assign({}, e, { expanded: false }); });
+                    var payload = { notes: state.notes, events: state.events.map(function(e) { return Object.assign({}, e, { expanded: false }); }) };
+                    localStorage.setItem('chickennotelm_notes_events', JSON.stringify(payload));
+                }
+            });
+        })
+        .catch(function() {});
 };
 
 // 导出/导入功能

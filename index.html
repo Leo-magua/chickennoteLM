@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NoteMind · 智能笔记管理（真实API）</title>
+    <title>ChickenNoteLM · 智能笔记管理（真实API）</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -61,6 +61,7 @@
             background-color: #94a3b8;
         }
         .no-select {
+            -webkit-user-select: none;
             user-select: none;
         }
 
@@ -143,8 +144,8 @@
                 <button onclick="batchDuplicate()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">副本</button>
                 <button onclick="batchImportToChat()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">导入对话</button>
                 <button onclick="batchExtractEvents()" class="flex-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded text-xs text-amber-700">提取事件</button>
-                <button onclick="batchDelete()" class="px-2 py-1 bg-red-100 hover:bg-red-200 rounded text-xs text-red-700">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <button onclick="batchDelete()" class="px-2 py-1 bg-red-100 hover:bg-red-200 rounded text-xs text-red-700" title="删除选中笔记">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
             </div>
         </div>
@@ -164,7 +165,7 @@
                 </button>
                 <!-- Note Title -->
                 <div class="flex items-center gap-2 flex-1 max-w-xl">
-                    <input id="currentNoteTitle" type="text" value="未命名笔记"
+                    <input id="currentNoteTitle" type="text" value="未命名笔记" aria-label="笔记标题"
                            class="font-semibold text-lg bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none px-1 py-0.5 transition-all w-full text-slate-800"
                            onchange="renameCurrentNote(this.value)"
                            onblur="renameCurrentNote(this.value)">
@@ -183,7 +184,7 @@
                 <button onclick="document.getElementById('importFile').click()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="导入数据 (JSON)">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4-4 4m4-4v12"></path></svg>
                 </button>
-                <input type="file" id="importFile" accept="application/json" class="hidden" onchange="importDataFromFile(event)">
+                <input type="file" id="importFile" accept="application/json" class="hidden" aria-label="导入 JSON 数据文件" onchange="importDataFromFile(event)">
 
                 <div class="w-px h-6 bg-slate-300 mx-1 hidden md:block"></div>
 
@@ -235,15 +236,15 @@
                 AI 助手
             </h3>
             <div class="flex items-center gap-2">
-                <select id="chatSessionSelect"
+                <select id="chatSessionSelect" aria-label="选择历史对话"
                         class="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                         onchange="handleChatSessionChange(this)">
                 </select>
                 <button onclick="createNewChatSession(true)" class="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
                     新建对话
                 </button>
-                <button onclick="toggleAIChat()" class="p-1 hover:bg-slate-200 rounded text-slate-500">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button onclick="toggleAIChat()" class="p-1 hover:bg-slate-200 rounded text-slate-500" title="关闭 AI 对话面板">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
         </div>
@@ -267,8 +268,8 @@
                           rows="2"
                           placeholder="输入消息..."
                           onkeydown="handleChatKeydown(event)"></textarea>
-                <button onclick="sendChatMessage()" class="absolute right-2 bottom-2.5 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                <button onclick="sendChatMessage()" class="absolute right-2 bottom-2.5 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm" title="发送消息">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                 </button>
             </div>
         </div>
@@ -287,8 +288,8 @@
                 <button onclick="extractAllEvents()" class="text-xs px-2.5 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 font-medium transition-colors">
                     全局提取
                 </button>
-                <button onclick="toggleEventModule()" class="p-1 hover:bg-slate-200 rounded text-slate-500">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button onclick="toggleEventModule()" class="p-1 hover:bg-slate-200 rounded text-slate-500" title="关闭事件识别面板">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
         </div>
@@ -333,8 +334,8 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg m-4 overflow-hidden animate-slide-in border border-slate-200">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <h2 class="text-lg font-bold text-slate-800">系统配置</h2>
-                <button onclick="toggleSettings()" class="p-1.5 hover:bg-slate-200 rounded-full transition-colors">
-                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button onclick="toggleSettings()" class="p-1.5 hover:bg-slate-200 rounded-full transition-colors" title="关闭设置">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">

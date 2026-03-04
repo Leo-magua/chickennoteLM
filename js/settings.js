@@ -25,13 +25,17 @@ function saveSettings() {
     state.settings.systemPromptChat = document.getElementById('settingPromptChat').value;
     state.settings.systemPromptEvent = document.getElementById('settingPromptEvent').value;
 
-    localStorage.setItem('notemind_settings', JSON.stringify(state.settings));
+    localStorage.setItem('chickennotelm_settings', JSON.stringify(state.settings));
     toggleSettings();
     showToast('配置已更新');
 }
 
 function loadSettings() {
-    const saved = localStorage.getItem('notemind_settings');
+    let saved = localStorage.getItem('chickennotelm_settings');
+    if (!saved && localStorage.getItem('notemind_settings')) {
+        saved = localStorage.getItem('notemind_settings');
+        if (saved) localStorage.setItem('chickennotelm_settings', saved);
+    }
     if (saved) {
         try {
             const parsed = JSON.parse(saved);

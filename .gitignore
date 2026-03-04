@@ -1,16 +1,35 @@
-# 本地数据目录，不同步到 GitHub
+# ========== 不可上传到 GitHub（本地/敏感/生成） ==========
+
+# 本地数据目录：笔记、聊天、事件数据仅存本机
 chatdata/
 eventdata/
 notefile/
 
-# Python
+# Python 虚拟环境与缓存（每台机器自己生成）
+.venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
 *$py.class
-.env
-.venv/
-venv/
+*.pyo
 
-# 系统文件
+# 环境与敏感配置（若存在）
+.env
+.env.local
+*.local
+
+# 系统与编辑器
 .DS_Store
+Thumbs.db
 *.log
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ========== 可上传到 GitHub ==========
+# 除上述忽略项外，以下都会上传：
+# - 代码：*.py, *.html, js/*.js, requirements.txt
+# - 启动脚本：启动.bat, 启动.command, run.py
+# - 文档：README.md, 本 .gitignore

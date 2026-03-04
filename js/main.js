@@ -1,19 +1,28 @@
 // js/main.js - 应用入口
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 加载设置
+document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
-
-    // 加载笔记和事件
     loadDataFromLocalStorage();
 
-    // 渲染笔记列表
-    renderNoteList();
-
-    // 加载当前笔记
-    if (state.currentNoteId) {
-        loadNote(state.currentNoteId);
-    }
+    // 本地无数据时从后端 notefile/ 拉取，再没有才用默认笔记
+    (function ensureNotes() {
+        if (state.notes.length > 0) {
+            renderNoteList();
+            if (state.currentNoteId) loadNote(state.currentNoteId);
+            return;
+        }
+        window.loadDataFromServerIfEmpty().then(function() {
+            if (!state.notes.length) {
+                state.notes = [
+                    { id: '1', title: '项目规划会议', content: '# 会议记录\n\n- [ ] 确定UI卡片圆角风格（今天）\n- [ ] 实现拖拽修改列宽功能', updatedAt: new Date().toISOString() },
+                    { id: '2', title: '学习计划', content: '本周重点：\n1. 深入学习 Tailwind\n2. 整理Flex布局的最佳实践\n*注意：下周一需要提交 Demo*。', updatedAt: new Date(Date.now() - 86400000).toISOString() }
+                ];
+                if (!state.currentNoteId) state.currentNoteId = state.notes[0].id;
+            }
+            renderNoteList();
+            if (state.currentNoteId) loadNote(state.currentNoteId);
+        });
+    })();
 
     // 加载聊天历史
     if (window.loadChatHistoryList) {
