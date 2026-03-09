@@ -95,6 +95,10 @@ python run.py
 
 填好保存后，再试「从笔记提取」和「AI 聊天」就可以了。这些配置只存在你当前这台电脑的浏览器里，不会上传到别处。
 
+**使用 OpenClaw 作为对话后端**：若本机已安装并运行 [OpenClaw](https://github.com/openclaw/openclaw)，可在设置中勾选「使用 OpenClaw 本地网关作为对话后端」，并填写网关地址和 Token（见上）。需在 OpenClaw 配置中启用 HTTP chatCompletions 并重启网关后，页面里的「AI 聊天」才会连上。
+
+**在页面里直接跑 OpenClaw TUI**：不依赖网关配置，点顶部栏的 **「OpenClaw 终端」**（终端图标），会在右侧打开一个内嵌终端，自动在本机执行 `openclaw tui`，和你在本机命令行里运行的效果一致。需已安装 [OpenClaw](https://github.com/openclaw/openclaw) 且 `openclaw` 在系统 PATH 中。若内嵌终端连不上，可安装 `gevent` 和 `gevent-websocket` 后重启后端（`pip install gevent gevent-websocket`），或直接在本机终端运行 `openclaw tui`。
+
 ---
 
 ## 遇到问题看这里

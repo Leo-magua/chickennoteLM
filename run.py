@@ -25,9 +25,19 @@ def main():
 
     threading.Thread(target=open_browser, daemon=True).start()
 
-    # 直接导入并运行 Flask 应用，避免再起子进程
     import chickennotelm_server
-    chickennotelm_server.app.run(host="127.0.0.1", port=5002, debug=True, use_reloader=False)
+    app = chickennotelm_server.app
+    try:
+        from gevent import monkey
+        monkey.patch_all()
+        from gevent.pywsgi import WSGIServer
+        from geventwebsocket.handler import WebSocketHandler
+        server = WSGIServer(("127.0.0.1", 5002), app, handler_class=WebSocketHandler)
+        print("ChickenNoteLM 后端 (含 WebSocket) http://127.0.0.1:5002")
+        server.serve_forever()
+    except ImportError as e:
+        print("提示: 未安装 gevent/gevent-websocket，OpenClaw 终端面板将无法连接。可执行: pip install gevent gevent-websocket")
+        app.run(host="127.0.0.1", port=5002, debug=True, use_reloader=False)
 
 if __name__ == "__main__":
     main()

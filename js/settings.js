@@ -6,7 +6,6 @@ function toggleSettings() {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
-        // 填充当前设置
         document.getElementById('settingApiKey').value = state.settings.apiKey || '';
         document.getElementById('settingBaseUrl').value = state.settings.baseUrl || 'https://api.openai.com/v1';
         document.getElementById('settingModel').value = state.settings.model || 'gpt-3.5-turbo';

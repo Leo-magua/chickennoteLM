@@ -101,9 +101,34 @@ function saveCurrentNote() {
     }
 }
 
+var _autoSaveDebounceTimer = null;
+var AUTO_SAVE_DELAY_MS = 1500;
+
 function autoSave() {
     updateWordCount();
     updateEditorPreview();
+    if (_autoSaveDebounceTimer) clearTimeout(_autoSaveDebounceTimer);
+    _autoSaveDebounceTimer = setTimeout(function () {
+        _autoSaveDebounceTimer = null;
+        saveCurrentNoteContentOnly();
+    }, AUTO_SAVE_DELAY_MS);
+}
+
+function saveCurrentNoteContentOnly() {
+    var note = state.notes.find(function (n) { return n.id === state.currentNoteId; });
+    if (!note) return;
+    var editor = document.getElementById('noteEditor');
+    if (!editor) return;
+    withAutoSave(function () {
+        note.content = editor.value;
+        note.updatedAt = new Date().toISOString();
+    });
+    var indicator = document.getElementById('saveIndicator');
+    if (indicator) {
+        indicator.textContent = '已保存';
+        indicator.style.opacity = '1';
+        setTimeout(function () { indicator.style.opacity = '0'; }, 1500);
+    }
 }
 
 function updateWordCount() {
