@@ -26,31 +26,48 @@ window.state = {
     eventLoading: false
 };
 
-// 自动保存到 localStorage
-window.withAutoSave = function(fn) {
+// 自动保存到 localStorage 和 IndexedDB
+window.withAutoSave = async function(fn) {
     fn();
-    saveDataToLocalStorage();
+    await saveDataToStorage();
     if (window.renderNoteList) renderNoteList();
     if (window.renderEvents && state.eventOpen) renderEvents();
     if (window.updateChatContextUI) updateChatContextUI();
 };
 
-function saveDataToLocalStorage() {
+// 保存数据到存储（IndexedDB + localStorage 双写）
+async function saveDataToStorage() {
     try {
         const data = {
             notes: state.notes,
             events: state.events.map(e => ({ ...e, expanded: false }))
         };
+        
+        // 1. 保存到 localStorage（兼容旧版）
         localStorage.setItem('chickennotelm_notes_events', JSON.stringify(data));
+        
+        // 2. 保存到 IndexedDB（离线优先）
+        if (window.dataService && window.dataService.db) {
+            for (const note of state.notes) {
+                await window.dataService.saveNote(note);
+            }
+        }
+        
+        // 3. 同步到服务器
         syncNotesAndEventsToServer(data);
     } catch (e) {
-        console.error('保存到localStorage失败', e);
+        console.error('保存数据失败', e);
     }
+}
+
+// 兼容旧版函数名
+function saveDataToLocalStorage() {
+    saveDataToStorage();
 }
 
 async function syncNotesAndEventsToServer(data) {
     try {
-        await fetch('http://127.0.0.1:5002/api/sync/notes-events', {
+        await fetch('/api/sync/notes-events', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -65,7 +82,37 @@ async function syncNotesAndEventsToServer(data) {
     }
 }
 
-window.loadDataFromLocalStorage = function() {
+// 从 IndexedDB 加载数据（离线优先）
+window.loadDataFromIndexedDB = async function() {
+    try {
+        if (window.dataService && window.dataService.db) {
+            const notes = await window.dataService.getAllNotes();
+            if (notes && notes.length > 0) {
+                state.notes = notes;
+                console.log('[IndexedDB] Loaded', notes.length, 'notes');
+                return true;
+            }
+        }
+    } catch (e) {
+        console.error('[IndexedDB] Load failed:', e);
+    }
+    return false;
+};
+
+// 从 localStorage 加载数据（兼容旧版）
+window.loadDataFromLocalStorage = async function() {
+    // 1. 优先尝试从 IndexedDB 加载
+    const loadedFromIndexedDB = await window.loadDataFromIndexedDB();
+    if (loadedFromIndexedDB) {
+        // 如果成功从 IndexedDB 加载，也同步到 localStorage
+        saveDataToLocalStorage();
+        if (!state.currentNoteId && state.notes.length) {
+            state.currentNoteId = state.notes[0].id;
+        }
+        return;
+    }
+    
+    // 2. 回退到 localStorage
     let stored = localStorage.getItem('chickennotelm_notes_events');
     // 兼容旧版：若新 key 为空但存在旧 key，迁移过来
     if (!stored && localStorage.getItem('notemind_notes_events')) {
@@ -80,6 +127,13 @@ window.loadDataFromLocalStorage = function() {
             const { notes, events } = JSON.parse(stored);
             if (Array.isArray(notes)) state.notes = notes;
             if (Array.isArray(events)) state.events = events.map(e => ({ ...e, expanded: false }));
+            
+            // 同步到 IndexedDB
+            if (window.dataService) {
+                for (const note of state.notes) {
+                    await window.dataService.saveNote(note);
+                }
+            }
         } catch (e) {
             console.error('解析localStorage数据失败', e);
         }
@@ -93,7 +147,7 @@ window.loadDataFromLocalStorage = function() {
 // 当本地无笔记时，从后端 notefile/ 拉取（兼容「只有磁盘文件、无 localStorage」的情况）
 window.loadDataFromServerIfEmpty = function() {
     if (state.notes.length > 0) return Promise.resolve();
-    return fetch('http://127.0.0.1:5002/api/notes')
+    return fetch('/api/notes')
         .then(function(res) { return res.ok ? res.json() : null; })
         .then(function(data) {
             if (data && Array.isArray(data.notes) && data.notes.length > 0) {
@@ -105,7 +159,7 @@ window.loadDataFromServerIfEmpty = function() {
         })
         .catch(function() {})
         .then(function() {
-            return fetch('http://127.0.0.1:5002/api/events').then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+            return fetch('/api/events').then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
                 if (data && Array.isArray(data.events) && data.events.length > 0) {
                     state.events = (data.events || []).map(function(e) { return Object.assign({}, e, { expanded: false }); });
                     var payload = { notes: state.notes, events: state.events.map(function(e) { return Object.assign({}, e, { expanded: false }); }) };

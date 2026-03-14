@@ -271,7 +271,7 @@ function renderMarkdown(text) {
 async function ensureCurrentChatSession() {
     if (state.currentChatId) return;
     try {
-        const res = await fetch('http://127.0.0.1:5002/api/chats', { method: 'GET' });
+        const res = await fetch('/api/chats', { method: 'GET' });
         if (res.ok) {
             const data = await res.json();
             state.chatSessions = data.chats || [];
@@ -288,7 +288,7 @@ async function ensureCurrentChatSession() {
 async function saveCurrentChatToServer() {
     if (!state.currentChatId) return;
     try {
-        await fetch(`http://127.0.0.1:5002/api/chats/${encodeURIComponent(state.currentChatId)}`, {
+        await fetch(`/api/chats/${encodeURIComponent(state.currentChatId)}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -307,7 +307,7 @@ async function loadChatHistoryList() {
     const select = document.getElementById('chatSessionSelect');
     if (!select) return;
     try {
-        const res = await fetch('http://127.0.0.1:5002/api/chats', { method: 'GET' });
+        const res = await fetch('/api/chats', { method: 'GET' });
         if (!res.ok) return;
         const data = await res.json();
         state.chatSessions = data.chats || [];
@@ -343,7 +343,7 @@ async function handleChatSessionChange(selectEl) {
     const chatId = selectEl.value;
     if (!chatId) return;
     try {
-        const res = await fetch(`http://127.0.0.1:5002/api/chats/${encodeURIComponent(chatId)}`, { method: 'GET' });
+        const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}`, { method: 'GET' });
         if (!res.ok) return;
         const chat = await res.json();
         state.currentChatId = chat.id;
@@ -374,7 +374,7 @@ async function createNewChatSession(withPrompt = true) {
         title = prompt('请输入新对话标题（可留空自动生成）：') || '';
     }
     try {
-        const res = await fetch('http://127.0.0.1:5002/api/chats', {
+        const res = await fetch('/api/chats', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
