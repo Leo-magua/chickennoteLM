@@ -17,7 +17,8 @@ window.state = {
         baseUrl: 'https://api.openai.com/v1',
         model: 'gpt-3.5-turbo',
         systemPromptChat: '你是一个智能笔记助手，帮助用户整理思路、提取关键信息和规划任务。请基于提供的笔记内容给出有帮助的回答。',
-        systemPromptEventExtract: '你是一个事件与任务抽取助手，请严格按照以下要求从给定的中文笔记中提取结构化数据：\\n\\n1. 只输出 JSON，格式为：{ "events": [ { "title": string, "context": string, "tags": string[], "time": string } ] }，不要包含任何多余文字。\\n2. 每个事件：\\n   - title：一句话概括事件或待办事项，简短且有可执行性。\\n   - context：从原文中提炼的详细说明，包含背景、目的、约束等。\\n   - tags：提取 1～5 个标签，例如：["工作", "学习", "会议", "重要", "待办"]。\\n   - time：如果原文中有明确时间（如“明天上午10点”“3月1日之前”），请标准化为自然语言短语；如果没有明确时间，请用空字符串 ""。\\n3. 忽略完全重复或无实际行动意义的描述（如泛泛的感受、无具体动作的感想）。\\n4. 若无法提取任何事件，请返回 { "events": [] }。'
+        systemPromptEventExtract: '你是一个事件与任务抽取助手，请严格按照以下要求从给定的中文笔记中提取结构化数据：\\n\\n1. 只输出 JSON，格式为：{ "events": [ { "title": string, "context": string, "tags": string[], "time": string } ] }，不要包含任何多余文字。\\n2. 每个事件：\\n   - title：一句话概括事件或待办事项，简短且有可执行性。\\n   - context：从原文中提炼的详细说明，包含背景、目的、约束等。\\n   - tags：提取 1～5 个标签，例如：["工作", "学习", "会议", "重要", "待办"]。\\n   - time：如果原文中有明确时间（如“明天上午10点”“3月1日之前”），请标准化为自然语言短语；如果没有明确时间，请用空字符串 ""。\\n3. 忽略完全重复或无实际行动意义的描述（如泛泛的感受、无具体动作的感想）。\\n4. 若无法提取任何事件，请返回 { "events": [] }。',
+        markdownConvertPrompt: '你是 Markdown 编辑专家。请把用户给出的纯文本整理为结构清晰、可读性强的 Markdown。要求：\\n1) 保留原始语义，不编造事实；\\n2) 自动识别主题并拆分为合适的标题与小节；\\n3) 将并列信息转为列表，将步骤转为有序列表；\\n4) 重要信息可用加粗、引用块强调；\\n5) 若出现时间/任务信息，可整理为 TODO 列表；\\n6) 仅输出最终 Markdown，不要额外解释。'
     },
     sidebarOpen: true,
     chatOpen: false,
@@ -46,15 +47,16 @@ async function saveDataToStorage() {
         // 1. 保存到 localStorage（兼容旧版）
         localStorage.setItem('chickennotelm_notes_events', JSON.stringify(data));
         
-        // 2. 保存到 IndexedDB（离线优先）
+        // 2. 同步到 IndexedDB（离线优先）
+        // 注意：这里不要调用 dataService.saveNote()，否则会再次回调 saveDataToStorage 形成递归。
         if (window.dataService && window.dataService.db) {
             for (const note of state.notes) {
-                await window.dataService.saveNote(note);
+                await window.dataService.db.addNote(note);
             }
         }
         
         // 3. 同步到服务器
-        syncNotesAndEventsToServer(data);
+        await syncNotesAndEventsToServer(data);
     } catch (e) {
         console.error('保存数据失败', e);
     }
@@ -62,21 +64,28 @@ async function saveDataToStorage() {
 
 // 兼容旧版函数名
 function saveDataToLocalStorage() {
-    saveDataToStorage();
+    const data = {
+        notes: state.notes,
+        events: state.events.map(e => ({ ...e, expanded: false }))
+    };
+    localStorage.setItem('chickennotelm_notes_events', JSON.stringify(data));
 }
 
 async function syncNotesAndEventsToServer(data) {
     try {
-        await fetch('/api/sync/notes-events', {
+        const overlay = document.getElementById('loginOverlay');
+        if (overlay && overlay.style.display !== 'none') return;
+
+        const response = await fetch('/api/sync/notes-events', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 notes: data.notes || [],
                 events: data.events || []
             })
         });
+        if (response.status === 401) return;
     } catch (e) {
         console.error('同步到本地文件失败', e);
     }
@@ -129,9 +138,9 @@ window.loadDataFromLocalStorage = async function() {
             if (Array.isArray(events)) state.events = events.map(e => ({ ...e, expanded: false }));
             
             // 同步到 IndexedDB
-            if (window.dataService) {
+            if (window.dataService && window.dataService.db) {
                 for (const note of state.notes) {
-                    await window.dataService.saveNote(note);
+                    await window.dataService.db.addNote(note);
                 }
             }
         } catch (e) {
@@ -147,7 +156,7 @@ window.loadDataFromLocalStorage = async function() {
 // 当本地无笔记时，从后端 notefile/ 拉取（兼容「只有磁盘文件、无 localStorage」的情况）
 window.loadDataFromServerIfEmpty = function() {
     if (state.notes.length > 0) return Promise.resolve();
-    return fetch('/api/notes')
+    return fetch('/api/notes', { credentials: 'include' })
         .then(function(res) { return res.ok ? res.json() : null; })
         .then(function(data) {
             if (data && Array.isArray(data.notes) && data.notes.length > 0) {
@@ -159,7 +168,7 @@ window.loadDataFromServerIfEmpty = function() {
         })
         .catch(function() {})
         .then(function() {
-            return fetch('/api/events').then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+            return fetch('/api/events', { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
                 if (data && Array.isArray(data.events) && data.events.length > 0) {
                     state.events = (data.events || []).map(function(e) { return Object.assign({}, e, { expanded: false }); });
                     var payload = { notes: state.notes, events: state.events.map(function(e) { return Object.assign({}, e, { expanded: false }); }) };
