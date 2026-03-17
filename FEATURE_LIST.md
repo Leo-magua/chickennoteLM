@@ -1,6 +1,6 @@
 # ChickenNoteLM Feature List
 
-> 更新时间：2026-03-15  
+> 更新时间：2026-03-17  
 > 部署路径：`/var/www/chickennoteLM`
 
 ## 1) 账号与访问控制
@@ -9,7 +9,7 @@
 - 登录态校验：页面初始化时调用 `/api/auth/me`
 - 未登录强制停留在登录页（登录遮罩）
 - 退出登录（`/api/auth/logout`）
-- 按用户隔离数据目录（`notefile/<user_id>`、`chatdata/<user_id>`、`eventdata/<user_id>`、`sync_state/<user_id>`）
+- 按用户隔离数据目录（`notefile/<user_id>`、`chatdata/<user_id>`、`eventdata/<user_id>`、`sync_state/<user_id>`、`uploads/<user_id>`）
 
 ## 2) 笔记编辑与管理
 
@@ -19,26 +19,51 @@
 - 自动保存（输入防抖）
 - 手动保存按钮
 - 重命名当前笔记
-- 笔记多选、全选、批量删除
+- 笔记多选、全选、批量删除（已修复删除回弹问题）
 - Markdown 编辑/预览模式切换
 
 ## 3) 数据存储与同步
 
-- 本地存储：
-  - IndexedDB（主离线存储）
-  - localStorage（兼容与设置存储）
-- 服务端存储：
-  - 笔记落盘（`*.md + *.json`）
-  - 事件落盘（`events.json`）
-- 同步能力：
-  - 全量同步接口：`/api/sync/notes-events`
-  - 增量拉取：`/api/sync/pull`
-  - 增量推送：`/api/sync/push`
-  - 同步状态查询：`/api/sync/status`
-  - 冲突解决接口：`/api/sync/resolve`
+### 本地存储
+- IndexedDB（主离线存储）
+- localStorage（兼容与设置存储）
+
+### 服务端存储
+- 笔记落盘（`*.md + *.json`）
+- 事件落盘（`events.json`）
+- **notes_index.json（新增）**：服务端笔记索引文件，作为笔记列表权威来源，解决文件名变更导致的重复/丢失问题
+
+### 同步机制（已修复并稳定运行）
+- 全量同步接口：`/api/sync/notes-events`
+- 增量拉取：`/api/sync/pull`（基于 `notes_index` 的 `modified_at`）
+- 增量推送：`/api/sync/push`（先推后拉顺序，避免删除回弹）
+- 同步状态查询：`/api/sync/status`
+- 冲突解决接口：`/api/sync/resolve`
+- 本地变更保护窗口：编辑/删除后 5 秒内不触发 pull，防止旧数据回灌
 - 网络状态感知（online/offline）与后台同步触发
 
-## 4) AI 能力
+### 删除回弹问题修复（2026-03-17）
+- 根因：同步顺序为「先拉后推」，删除操作被旧服务器数据覆盖
+- 修复方案：
+  1. 服务端引入 `notes_index.json` 作为笔记列表权威来源
+  2. 调整增量同步顺序为「先推后拉」
+  3. 前端增加本地变更保护窗口（`__lastLocalMutationAt` 标记）
+  4. `saveDataToStorage` 先清理 IndexedDB 中已删除的笔记
+  5. `batchDelete` 立即删除 IndexedDB 和同步队列中的记录
+
+## 4) 图片上传与预览
+
+- **粘贴上传**：支持从剪贴板粘贴图片（Ctrl+V），自动压缩并上传
+- **拖拽上传**：支持拖拽图片文件到编辑器区域
+- **链接粘贴**：粘贴网络图片链接自动插入 Markdown 格式
+- **自动压缩**：超过 1200x1200px 的图片自动按比例压缩，质量 0.8
+- **格式支持**：PNG、JPEG、WebP、GIF
+- **大小限制**：单张图片最大 5MB
+- **预览联动**：粘贴图片后自动切换到预览模式确保图片可见
+- **存储路径**：`uploads/{user_id}/{note_id}/{filename}`
+- **返回格式**：`![alt](/uploads/{user_id}/{note_id}/{filename})`
+
+## 5) AI 能力
 
 - AI 对话（基于当前选中笔记上下文）
 - 聊天会话管理（新建、读取、保存、列表）
@@ -47,7 +72,7 @@
 - AI 转换结果一键回写编辑器并自动保存
 - AI 转换历史支持撤销（最近记录）
 
-## 5) 可配置项（Settings）
+## 6) 可配置项（Settings）
 
 - API Key
 - Base URL
@@ -58,7 +83,7 @@
 - 设置本地持久化（`chickennotelm_settings`）
 - 旧配置键兼容迁移（历史字段自动兼容）
 
-## 6) 事件模块
+## 7) 事件模块
 
 - 单篇提取事件、全局提取事件
 - 事件卡片列表展示
@@ -67,33 +92,34 @@
 - 标签新增、删除、按标签过滤
 - 事件排序（创建时间、更新时间，升降序）
 
-## 7) 导入导出
+## 8) 导入导出
 
 - 导入 JSON 数据（笔记/事件）
 - 导出笔记 JSON
 - 导出事件 JSON
 - 导出所有笔记为单个 Markdown 文件
 
-## 8) 前端离线与缓存
+## 9) 前端离线与缓存
 
 - Service Worker 注册
-- 静态资源缓存
+- 静态资源缓存（cache version：v4）
 - API 请求网络优先
-- 缓存版本管理（当前缓存名：`chickennoteLM-v4`）
+- 缓存版本管理，支持后台更新
 
-## 9) 后端能力（Flask）
+## 10) 后端能力（Flask）
 
-- 笔记 API：`/api/notes`
+- 笔记 API：`/api/notes`（基于 `notes_index.json` 返回列表）
 - 事件 API：`/api/events`
 - 聊天 API：`/api/chats`、`/api/chats/<id>`
 - 鉴权 API：`/api/auth/login`、`/api/auth/me`、`/api/auth/logout`
-- 同步 API：`/api/sync/*`
+- 同步 API：`/api/sync/*`（含增量 pull/push、状态查询、冲突解决）
+- 上传 API：`/api/uploads/image`
 - OpenClaw 代理接口：
   - `/api/openclaw/health`
   - `/api/openclaw/chat`
   - `/api/openclaw/tui`（WebSocket）
 
-## 10) 已知约束（供开发参考）
+## 11) 已知约束（供开发参考）
 
 - 无痕模式下浏览器本地缓存（IndexedDB/localStorage/cookie）不稳定，可能导致会话结束后数据不可见
 - 模型能力依赖外部 API 可用性与 Key 配置
@@ -101,7 +127,18 @@
 
 ---
 
-## 11) 未来规划（待执行）
+## 12) 最近修复记录
+
+| 日期 | 问题 | 修复方案 |
+|------|------|----------|
+| 2026-03-14 | 保存链路递归触发导致请求风暴 | 切断 state.js 与 data-service.js 的循环调用，明确主写入口 |
+| 2026-03-14 | 编辑区正文变空 | 修复 `renderEditorView()` 仅在从预览切回编辑时恢复内容 |
+| 2026-03-14 | 401 未登录时同步噪音 | 增加登录态保护，401 时静默跳过 |
+| 2026-03-17 | 笔记删除后回弹 | 引入 `notes_index.json`，调整同步顺序为先推后拉，增加本地变更保护窗口 |
+
+---
+
+## 13) 未来规划（待执行）
 
 以下为后续可迭代方向，供排期与选做参考。
 
