@@ -135,14 +135,38 @@ function updateWordCount() {
     document.getElementById('wordCount').textContent = `${document.getElementById('noteEditor').value.length} 字`;
 }
 
-function batchDelete() {
+async function batchDelete() {
+    // 获取要删除的笔记ID列表
+    const idsToDelete = Array.from(state.selectedNotes);
+    
+    // 1. 先从 IndexedDB 和同步队列中删除
+    if (window.dataService && window.dataService.db) {
+        for (const id of idsToDelete) {
+            try {
+                await window.dataService.deleteNote(id);
+            } catch (e) {
+                console.error('[batchDelete] Failed to delete note from IndexedDB:', id, e);
+            }
+        }
+    }
+    
+    // 2. 更新 state
     withAutoSave(() => {
         state.notes = state.notes.filter(n => !state.selectedNotes.has(n.id));
         state.selectedNotes.clear();
         if(state.notes.length) state.currentNoteId = state.notes[0].id;
         else state.currentNoteId = null;
     });
+    
     if (state.currentNoteId) loadNote(state.currentNoteId);
+    else {
+        // 如果没有笔记了，清空编辑器
+        document.getElementById('currentNoteTitle').value = '';
+        document.getElementById('noteEditor').value = '';
+        renderNoteList();
+    }
+    
+    showToast(`已删除 ${idsToDelete.length} 篇笔记`);
 }
 
 function batchDuplicate() {

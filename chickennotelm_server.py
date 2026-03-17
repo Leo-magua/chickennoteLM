@@ -27,6 +27,7 @@ NOTE_DIR = BASE_DIR / "notefile"
 CHAT_DIR = BASE_DIR / "chatdata"
 EVENT_DIR = BASE_DIR / "eventdata"
 UPLOAD_DIR = BASE_DIR / "uploads"
+NOTE_INDEX_FILE = "notes_index.json"
 
 def now_iso() -> str:
     return datetime.utcnow().isoformat()
@@ -79,6 +80,77 @@ def get_user_upload_dir(user_id: str, note_id: str):
     upload_dir = UPLOAD_DIR / _sanitize_user_id(user_id) / _sanitize_path_segment(note_id, "note")
     upload_dir.mkdir(parents=True, exist_ok=True)
     return upload_dir
+
+
+def get_note_index_path(note_dir: Path) -> Path:
+    return note_dir / NOTE_INDEX_FILE
+
+
+def save_note_index(note_dir: Path, index_map: dict):
+    path = get_note_index_path(note_dir)
+    payload = {
+        "version": 1,
+        "updatedAt": now_iso(),
+        "notes": list(index_map.values()),
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def rebuild_note_index(note_dir: Path) -> dict:
+    """
+    从磁盘文件重建索引，按 note id 去重（同 id 多份文件时保留最新修改时间）。
+    """
+    by_id = {}
+    for meta_path in note_dir.glob("*.json"):
+        if meta_path.name == NOTE_INDEX_FILE:
+            continue
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        note_id = str(meta.get("id") or meta_path.stem)
+        modified_at = int(meta_path.stat().st_mtime * 1000)
+        base = meta_path.stem
+        prev = by_id.get(note_id)
+        if prev and prev.get("modified_at", 0) >= modified_at:
+            continue
+        by_id[note_id] = {
+            "id": note_id,
+            "title": meta.get("title", ""),
+            "base": base,
+            "updatedAt": meta.get("updatedAt", now_iso()),
+            "modified_at": modified_at,
+        }
+    return by_id
+
+
+def load_note_index(note_dir: Path) -> dict:
+    path = get_note_index_path(note_dir)
+    if path.exists():
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            notes = raw.get("notes") or []
+            by_id = {}
+            for n in notes:
+                note_id = str(n.get("id") or "")
+                if not note_id:
+                    continue
+                by_id[note_id] = {
+                    "id": note_id,
+                    "title": n.get("title", ""),
+                    "base": n.get("base") or "",
+                    "updatedAt": n.get("updatedAt", now_iso()),
+                    "modified_at": int(n.get("modified_at") or 0),
+                }
+            return by_id
+        except Exception:
+            pass
+
+    # 索引缺失或损坏时自动重建并落盘
+    rebuilt = rebuild_note_index(note_dir)
+    save_note_index(note_dir, rebuilt)
+    return rebuilt
 
 
 def guess_image_extension(mimetype: str, filename: str = "") -> str:
@@ -178,25 +250,22 @@ def add_cors_headers(response):
 @app.get("/api/notes")
 @require_auth
 def get_notes():
-    """返回所有笔记（从 notefile 中的 .json + .md 组合加载，文件名格式为 标题slug_id）"""
+    """返回所有笔记（以 notes_index.json 为准，索引指向具体 md/json 文件）"""
     notes = []
     note_dir, _, _, _ = get_user_dirs(get_current_user())
-    for meta_path in note_dir.glob("*.json"):
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            note_id = meta.get("id") or meta_path.stem
-            md_path = note_dir / f"{meta_path.stem}.md"
-            content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
-            notes.append(
-                {
-                    "id": note_id,
-                    "title": meta.get("title", ""),
-                    "content": content,
-                    "updatedAt": meta.get("updatedAt", now_iso()),
-                }
-            )
-        except Exception:
-            continue
+    index_map = load_note_index(note_dir)
+    for note_id, meta in index_map.items():
+        base = meta.get("base") or f"{slugify(meta.get('title', ''))}_{note_id}"
+        md_path = note_dir / f"{base}.md"
+        content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+        notes.append(
+            {
+                "id": note_id,
+                "title": meta.get("title", ""),
+                "content": content,
+                "updatedAt": meta.get("updatedAt", now_iso()),
+            }
+        )
     return jsonify({"notes": notes})
 
 
@@ -213,7 +282,10 @@ def sync_notes_events():
     events = data.get("events") or []
 
     note_dir, _, event_dir, _ = get_user_dirs(get_current_user())
-    written_bases = set()
+    old_index = load_note_index(note_dir)
+    new_index = {}
+    now_ms = int(datetime.utcnow().timestamp() * 1000)
+
     for note in notes:
         note_id = str(note.get("id") or uuid.uuid4())
         title = note.get("title") or ""
@@ -221,7 +293,6 @@ def sync_notes_events():
         updated_at = note.get("updatedAt") or now_iso()
 
         base = f"{slugify(title)}_{note_id}"
-        written_bases.add(base)
         md_path = note_dir / f"{base}.md"
         meta_path = note_dir / f"{base}.json"
 
@@ -229,19 +300,29 @@ def sync_notes_events():
         meta = {"id": note_id, "title": title, "updatedAt": updated_at}
         meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 删除同一笔记的旧文件名（标题改后留下的旧文件）
-    for meta_path in note_dir.glob("*.json"):
-        stem = meta_path.stem
-        if stem in written_bases:
+        old_base = (old_index.get(note_id) or {}).get("base")
+        if old_base and old_base != base:
+            (note_dir / f"{old_base}.json").unlink(missing_ok=True)
+            (note_dir / f"{old_base}.md").unlink(missing_ok=True)
+
+        new_index[note_id] = {
+            "id": note_id,
+            "title": title,
+            "base": base,
+            "updatedAt": updated_at,
+            "modified_at": now_ms,
+        }
+
+    # 删除索引里已不存在的笔记文件
+    for old_id, old_meta in old_index.items():
+        if old_id in new_index:
             continue
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            old_id = meta.get("id")
-            if old_id and any(str(n.get("id")) == old_id for n in notes):
-                meta_path.unlink(missing_ok=True)
-                (note_dir / f"{stem}.md").unlink(missing_ok=True)
-        except Exception:
-            pass
+        old_base = old_meta.get("base")
+        if old_base:
+            (note_dir / f"{old_base}.json").unlink(missing_ok=True)
+            (note_dir / f"{old_base}.md").unlink(missing_ok=True)
+
+    save_note_index(note_dir, new_index)
 
     events_path = event_dir / "events.json"
     events_path.write_text(json.dumps(events, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -579,18 +660,13 @@ def sync_status():
     device_id = request.args.get("device_id", "default")
     
     notes = []
-    for meta_path in note_dir.glob("*.json"):
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            note_id = meta.get("id") or meta_path.stem
-            modified_at = get_note_modified_at(note_dir, note_id)
-            notes.append({
-                "id": note_id,
-                "modified_at": modified_at,
-                "title": meta.get("title", "")
-            })
-        except Exception:
-            continue
+    index_map = load_note_index(note_dir)
+    for note_id, meta in index_map.items():
+        notes.append({
+            "id": note_id,
+            "modified_at": int(meta.get("modified_at") or 0),
+            "title": meta.get("title", "")
+        })
     
     sync_state = load_sync_state(user_id, device_id)
     
@@ -616,31 +692,25 @@ def sync_pull():
     client_note_ids = set(data.get("note_ids", []))
     
     updated_notes = []
-    server_note_ids = set()
-    
-    for meta_path in note_dir.glob("*.json"):
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            note_id = meta.get("id") or meta_path.stem
-            server_note_ids.add(note_id)
-            
-            modified_at = get_note_modified_at(note_dir, note_id)
-            
-            # 如果笔记在服务器上比客户端新，则包含在响应中
-            if modified_at > last_sync_at:
-                md_path = note_dir / f"{meta_path.stem}.md"
-                content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
-                
-                updated_notes.append({
-                    "id": note_id,
-                    "title": meta.get("title", ""),
-                    "content": content,
-                    "updatedAt": meta.get("updatedAt", now_iso()),
-                    "modified_at": modified_at,
-                    "action": "update"
-                })
-        except Exception:
-            continue
+    index_map = load_note_index(note_dir)
+    server_note_ids = set(index_map.keys())
+
+    for note_id, meta in index_map.items():
+        modified_at = int(meta.get("modified_at") or 0)
+        # 如果笔记在服务器上比客户端新，则包含在响应中
+        if modified_at > last_sync_at:
+            base = meta.get("base") or f"{slugify(meta.get('title', ''))}_{note_id}"
+            md_path = note_dir / f"{base}.md"
+            content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+
+            updated_notes.append({
+                "id": note_id,
+                "title": meta.get("title", ""),
+                "content": content,
+                "updatedAt": meta.get("updatedAt", now_iso()),
+                "modified_at": modified_at,
+                "action": "update"
+            })
     
     # 检测服务器上已删除的笔记（在客户端存在但在服务器不存在）
     deleted_ids = list(client_note_ids - server_note_ids)
@@ -667,6 +737,8 @@ def sync_push():
     
     results = []
     conflicts = []
+    index_map = load_note_index(note_dir)
+    index_changed = False
     
     for change in changes:
         note_id = change.get("id")
@@ -677,17 +749,28 @@ def sync_push():
             if action == "delete":
                 # 处理删除
                 deleted = False
-                for meta_path in list(note_dir.glob(f"*{note_id}*.json")):
-                    md_path = note_dir / f"{meta_path.stem}.md"
-                    meta_path.unlink(missing_ok=True)
-                    md_path.unlink(missing_ok=True)
+                old_meta = index_map.pop(str(note_id), None)
+                if old_meta:
+                    old_base = old_meta.get("base")
+                    if old_base:
+                        (note_dir / f"{old_base}.json").unlink(missing_ok=True)
+                        (note_dir / f"{old_base}.md").unlink(missing_ok=True)
                     deleted = True
+                    index_changed = True
+                else:
+                    # 兼容旧数据：兜底按 id 模糊删除
+                    for meta_path in list(note_dir.glob(f"*{note_id}*.json")):
+                        md_path = note_dir / f"{meta_path.stem}.md"
+                        meta_path.unlink(missing_ok=True)
+                        md_path.unlink(missing_ok=True)
+                        deleted = True
                 
                 results.append({"id": note_id, "action": "delete", "success": deleted})
                 
             elif action in ("update", "create"):
                 # 检查冲突
-                server_modified_at = get_note_modified_at(note_dir, note_id)
+                current_meta = index_map.get(str(note_id)) or {}
+                server_modified_at = int(current_meta.get("modified_at") or 0)
                 
                 # 如果服务器版本比客户端新，标记为冲突
                 if server_modified_at > client_modified_at:
@@ -711,12 +794,27 @@ def sync_push():
                 md_path.write_text(content, encoding="utf-8")
                 meta = {"id": note_id, "title": title, "updatedAt": updated_at}
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+                old_base = current_meta.get("base")
+                if old_base and old_base != base:
+                    (note_dir / f"{old_base}.json").unlink(missing_ok=True)
+                    (note_dir / f"{old_base}.md").unlink(missing_ok=True)
+
+                current_ms = int(datetime.utcnow().timestamp() * 1000)
+                index_map[str(note_id)] = {
+                    "id": str(note_id),
+                    "title": title,
+                    "base": base,
+                    "updatedAt": updated_at,
+                    "modified_at": current_ms,
+                }
+                index_changed = True
                 
                 results.append({
                     "id": note_id,
                     "action": action,
                     "success": True,
-                    "server_modified_at": get_note_modified_at(note_dir, note_id)
+                    "server_modified_at": current_ms
                 })
                 
         except Exception as e:
@@ -727,6 +825,9 @@ def sync_push():
                 "error": str(e)
             })
     
+    if index_changed:
+        save_note_index(note_dir, index_map)
+
     # 更新同步状态
     sync_state = load_sync_state(user_id, device_id)
     sync_state["last_sync_at"] = int(datetime.utcnow().timestamp() * 1000)

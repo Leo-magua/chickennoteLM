@@ -136,15 +136,18 @@ class DataService {
 
   async triggerSync() {
     if (!this.isOnline || this.syncInProgress) return;
+    // 本地刚有编辑/删除时，避免立即 pull 把旧服务器数据回灌到 UI
+    const lastLocalMutationAt = Number(window.__lastLocalMutationAt || 0);
+    if (Date.now() - lastLocalMutationAt < 5000) return;
     
     this.syncInProgress = true;
     
     try {
-      // 1. 首先拉取服务器变更
-      await this.pullFromServer();
-      
-      // 2. 然后推送本地变更
+      // 1. 先推送本地变更，避免“先拉后推”导致删除回弹
       await this.pushToServer();
+      
+      // 2. 再拉取服务器变更
+      await this.pullFromServer();
       
     } catch (e) {
       console.error('[DataService] Sync error:', e);
@@ -238,6 +241,16 @@ class DataService {
     
     const changes = [];
     for (const item of pendingItems) {
+      // 删除动作在本地可能已经不存在对应 note，不能跳过
+      if (item.action === 'delete') {
+        changes.push({
+          id: item.note_id,
+          action: 'delete',
+          modified_at: item.timestamp || Date.now()
+        });
+        continue;
+      }
+
       const note = await this.db.getNote(item.note_id);
       if (!note) continue;
       

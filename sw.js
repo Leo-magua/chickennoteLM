@@ -2,7 +2,7 @@
  * Service Worker - 离线缓存支持
  */
 
-const CACHE_NAME = 'chickennoteLM-v7';
+const CACHE_NAME = 'chickennoteLM-v9';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -17,7 +17,7 @@ const STATIC_ASSETS = [
   '/js/main.js',
   '/js/import.js',
   '/js/export.js',
-  '/js/ai-format.js'
+  '/js/ai-format.js',
   '/js/paste-image.js',
 ];
 
@@ -89,7 +89,7 @@ self.addEventListener('fetch', (event) => {
         return fetch(request)
           .then((fetchResponse) => {
             // 缓存新资源
-            if (fetchResponse.status === 200 && fetchResponse.method === 'GET') {
+            if (fetchResponse.status === 200 && request.method === 'GET') {
               const responseClone = fetchResponse.clone();
               caches.open(CACHE_NAME).then((cache) => {
                 cache.put(request, responseClone);

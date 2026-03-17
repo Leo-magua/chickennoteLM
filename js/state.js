@@ -29,6 +29,8 @@ window.state = {
 
 // 自动保存到 localStorage 和 IndexedDB
 window.withAutoSave = async function(fn) {
+    // 标记本地刚发生过变更，给后台增量同步一个短暂保护窗口，避免“删除后被旧数据立刻拉回”
+    window.__lastLocalMutationAt = Date.now();
     fn();
     await saveDataToStorage();
     if (window.renderNoteList) renderNoteList();
@@ -50,8 +52,20 @@ async function saveDataToStorage() {
         // 2. 同步到 IndexedDB（离线优先）
         // 注意：这里不要调用 dataService.saveNote()，否则会再次回调 saveDataToStorage 形成递归。
         if (window.dataService && window.dataService.db) {
+            const db = window.dataService.db;
+            const stateIds = new Set(state.notes.map(n => String(n.id)));
+            const dbNotes = await db.getAllNotes();
+
+            // 先删除 IndexedDB 中已不在当前 state 的笔记，避免“删除后回弹”
+            for (const dbNote of dbNotes) {
+                if (!stateIds.has(String(dbNote.id))) {
+                    await db.deleteNote(dbNote.id);
+                }
+            }
+
+            // 再写入当前 state 的最新内容
             for (const note of state.notes) {
-                await window.dataService.db.addNote(note);
+                await db.addNote(note);
             }
         }
         
@@ -137,10 +151,18 @@ window.loadDataFromLocalStorage = async function() {
             if (Array.isArray(notes)) state.notes = notes;
             if (Array.isArray(events)) state.events = events.map(e => ({ ...e, expanded: false }));
             
-            // 同步到 IndexedDB
+            // 同步到 IndexedDB（全量镜像，含删除）
             if (window.dataService && window.dataService.db) {
+                const db = window.dataService.db;
+                const stateIds = new Set(state.notes.map(n => String(n.id)));
+                const dbNotes = await db.getAllNotes();
+                for (const dbNote of dbNotes) {
+                    if (!stateIds.has(String(dbNote.id))) {
+                        await db.deleteNote(dbNote.id);
+                    }
+                }
                 for (const note of state.notes) {
-                    await window.dataService.db.addNote(note);
+                    await db.addNote(note);
                 }
             }
         } catch (e) {
