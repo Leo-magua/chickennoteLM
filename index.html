@@ -125,6 +125,20 @@
 </head>
 <body class="bg-slate-200 text-slate-900 h-screen overflow-hidden p-2 flex gap-1">
 
+
+    <!-- 登录遮罩：未登录时显示 -->
+    <div id="loginOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80" style="display: flex;">
+        <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
+            <h2 class="text-xl font-semibold text-slate-800 mb-4">登录笔记</h2>
+            <p class="text-sm text-slate-500 mb-4">测试阶段：输入用户名即可，数据按用户隔离。</p>
+            <form id="loginForm" onsubmit="return handleLoginSubmit(event)">
+                <input type="text" id="loginUsername" placeholder="用户名（字母/数字/下划线）" required
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4">
+                <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">登录</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Sidebar Panel: Note List -->
     <aside id="sidebar-panel" class="w-72 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-shrink-0 relative overflow-hidden transition-all">
         <!-- Sidebar Header -->
@@ -201,6 +215,9 @@
                 <button onclick="toggleSettings()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="系统配置">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 </button>
+                <button onclick="handleLogout()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors" title="退出登录">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </button>
             </div>
         </header>
 
@@ -221,6 +238,13 @@
                             onclick="toggleEditorView()"
                             class="hover:text-blue-600 transition-colors">
                         预览模式：关
+                    </button>
+                    <button id="markdownConvertBtn"
+                            onclick="convertCurrentNoteToMarkdown()"
+                            class="hover:text-indigo-600 transition-colors inline-flex items-center gap-1"
+                            title="调用大模型将当前内容整理为 Markdown">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"></path></svg>
+                        转为Markdown
                     </button>
                     <button onclick="importCurrentNoteToChat()" class="hover:text-blue-600 transition-colors">导入AI对话</button>
                     <button onclick="extractEventsFromCurrent()" class="hover:text-amber-600 transition-colors">提取当前事件</button>
@@ -371,6 +395,10 @@
                     <label class="text-sm font-medium text-slate-700 flex items-center gap-2">事件提取系统提示词</label>
                     <textarea id="settingPromptEvent" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none text-sm" placeholder="请从文本中提取关键事件..."></textarea>
                 </div>
+                <div class="space-y-1.5">
+                    <label class="text-sm font-medium text-slate-700 flex items-center gap-2">文本转 Markdown 提示词</label>
+                    <textarea id="settingPromptAIFormat" rows="4" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none text-sm" placeholder="请将输入内容整理为结构化 Markdown..."></textarea>
+                </div>
             </div>
             <div class="p-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
                 <button onclick="toggleSettings()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">取消</button>
@@ -386,12 +414,16 @@
     </div>
 
     <!-- 引入模块化JS文件 -->
+    <script src="js/db.js"></script>
+    <script src="js/data-service.js"></script>
     <script src="js/state.js"></script>
     <script src="js/notes.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/events.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/settings.js"></script>
+    <script src="js/ai-format.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/paste-image.js"></script>
 </body>
 </html>

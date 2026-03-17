@@ -60,10 +60,7 @@ class DataService {
       await this.db.addToSyncQueue(note.id, note.id ? 'update' : 'create');
     }
     
-    // 2. 保存到 localStorage（兼容旧版）
-    this.saveToLocalStorage();
-    
-    // 3. 如果在线，立即同步
+    // 2. 如果在线，立即同步
     if (this.isOnline) {
       this.triggerSync();
     }
@@ -78,10 +75,7 @@ class DataService {
       await this.db.addToSyncQueue(id, 'update');
     }
     
-    // 2. 更新 localStorage
-    this.saveToLocalStorage();
-    
-    // 3. 触发同步
+    // 2. 触发同步
     if (this.isOnline) {
       this.triggerSync();
     }
@@ -94,10 +88,7 @@ class DataService {
       await this.db.addToSyncQueue(id, 'delete');
     }
     
-    // 2. 更新 localStorage
-    this.saveToLocalStorage();
-    
-    // 3. 触发同步
+    // 2. 触发同步
     if (this.isOnline) {
       this.triggerSync();
     }
@@ -145,15 +136,18 @@ class DataService {
 
   async triggerSync() {
     if (!this.isOnline || this.syncInProgress) return;
+    // 本地刚有编辑/删除时，避免立即 pull 把旧服务器数据回灌到 UI
+    const lastLocalMutationAt = Number(window.__lastLocalMutationAt || 0);
+    if (Date.now() - lastLocalMutationAt < 5000) return;
     
     this.syncInProgress = true;
     
     try {
-      // 1. 首先拉取服务器变更
-      await this.pullFromServer();
-      
-      // 2. 然后推送本地变更
+      // 1. 先推送本地变更，避免“先拉后推”导致删除回弹
       await this.pushToServer();
+      
+      // 2. 再拉取服务器变更
+      await this.pullFromServer();
       
     } catch (e) {
       console.error('[DataService] Sync error:', e);
@@ -176,6 +170,7 @@ class DataService {
       const response = await fetch('/api/sync/pull', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           device_id: this.db.deviceId,
           last_sync_at: lastSyncAt,
@@ -183,6 +178,7 @@ class DataService {
         })
       });
       
+      if (response.status === 401) return;
       if (!response.ok) throw new Error('Pull failed');
       
       const data = await response.json();
@@ -245,6 +241,16 @@ class DataService {
     
     const changes = [];
     for (const item of pendingItems) {
+      // 删除动作在本地可能已经不存在对应 note，不能跳过
+      if (item.action === 'delete') {
+        changes.push({
+          id: item.note_id,
+          action: 'delete',
+          modified_at: item.timestamp || Date.now()
+        });
+        continue;
+      }
+
       const note = await this.db.getNote(item.note_id);
       if (!note) continue;
       
@@ -262,12 +268,14 @@ class DataService {
       const response = await fetch('/api/sync/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           device_id: this.db.deviceId,
           changes: changes
         })
       });
       
+      if (response.status === 401) return;
       if (!response.ok) throw new Error('Push failed');
       
       const data = await response.json();
@@ -366,7 +374,7 @@ class DataService {
    */
   async getSyncStatus() {
     try {
-      const response = await fetch(`/api/sync/status?device_id=${this.db?.deviceId || 'default'}`);
+      const response = await fetch(`/api/sync/status?device_id=${this.db?.deviceId || 'default'}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to get sync status');
       return await response.json();
     } catch (e) {

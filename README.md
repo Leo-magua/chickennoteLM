@@ -1,117 +1,232 @@
-# ChickenNoteLM · 智能笔记
+# ChickenNoteLM · 云端部署版
 
-**记你的笔记，AI 帮你整理成待办、陪你聊——所有数据都在你自己电脑里。**
-
----
-
-## 它有什么好玩的？
-
-- **记笔记**：像写文档一样写，支持标题、列表、加粗等简单排版，写完自动保存。
-- **一键变待办**：选中一条或几条笔记，点「从笔记提取」——AI 会从你的文字里自动抽出「要做的事」和「时间」，变成一条条待办，不用自己再抄一遍。
-- **带着笔记和 AI 聊天**：先勾选几篇笔记，再打开右侧的「AI 聊天」，问「帮我总结一下」「这几条里哪件最优先」——AI 是看着你选中的笔记在回答，不是空聊。
-- **全在本地**：笔记、待办、聊天记录都保存在你本机的文件夹里，不依赖别人的服务器，隐私自己掌握。
-
-适合：会议记录后想快速出待办、学习笔记想随时问 AI、零碎想法想先记下来再让 AI 帮忙整理的人。
+**智能笔记管理 + AI 辅助整理，支持多用户隔离与增量同步。**
 
 ---
 
-## 一分钟上手
+## 功能特性
 
-### 1. 一键启动（未装 Python 也会自动带你去装）
+### 核心功能
+- **智能笔记**：支持 Markdown 编辑、实时预览、自动保存
+- **AI 对话**：基于选中笔记内容进行上下文问答
+- **事件提取**：从笔记中自动提取待办事项和时间节点
+- **图片上传**：支持粘贴/拖拽上传，自动压缩并关联到笔记
+- **导入导出**：支持 JSON/Markdown 多格式数据迁移
 
-- **Windows**：双击项目里的 **`启动.bat`**。  
-- **Mac**：双击项目里的 **`启动.command`**（若提示无法打开，可右键 → 打开；或打开「终端」执行 `chmod +x 启动.command` 后再双击）。
+### 云端特性
+- **用户隔离**：每个用户拥有独立的数据空间（笔记/聊天/事件/上传）
+- **Session 认证**：基于 Flask Session 的登录机制
+- **增量同步**：支持多设备间的增量数据同步（先推后拉策略）
+- **索引化存储**：服务端使用 `notes_index.json` 管理笔记元数据，解决文件名变更问题
+- **生产部署**：基于 gevent + nginx 的高性能部署
 
-若本机**还没有 Python**，脚本会自动用浏览器打开 [python.org/downloads](https://www.python.org/downloads/)，你只需在页面里下载并安装（**Windows 安装时务必勾选「Add Python to PATH」**），安装完成后**再双击一次** `启动.bat` / `启动.command` 即可，无需其他配置。
+---
 
-### 2. 若想先手动安装 Python（可选）
+## 技术架构
 
-- **Windows**：打开 [python.org/downloads](https://www.python.org/downloads/) 下载安装包，安装时勾选「Add Python to PATH」。  
-- **Mac**：在「终端」输入 `brew install python3`，或从 [python.org/downloads](https://www.python.org/downloads/) 下载 Mac 安装包。
-
-**首次运行**（或首次在本机运行）时，脚本会在项目内自动创建虚拟环境（`.venv`）并从网络安装依赖（Flask），无需管理员权限。之后每次使用只需双击 **`启动.bat`** / **`启动.command`**。**关闭弹出的黑色/终端窗口即停止 ChickenNoteLM**。
-
-### 3. 可选：用终端启动
-
-若已习惯用终端，在项目目录下执行（Mac/Linux 需先 `source .venv/bin/activate`，Windows 需先 `.venv\Scripts\activate`）：
-
-```text
-pip install -r requirements.txt
-python run.py
+```
+前端: 纯 JavaScript + Tailwind CSS + Marked.js
+后端: Flask + gevent-websocket
+存储: 文件系统（按用户分目录）+ 索引文件（notes_index.json）
+部署: nginx 反向代理 + systemd 服务托管
 ```
 
-会自动打开浏览器并启动后端；关闭终端即停止。
+### 数据存储结构
+```
+notefile/
+  └── {user_id}/              # 用户笔记目录
+      ├── notes_index.json    # 笔记索引（权威来源）
+      ├── {title}_{id}.json   # 笔记元数据
+      └── {title}_{id}.md     # 笔记内容
+chatdata/
+  └── {user_id}/              # 用户聊天记录
+eventdata/
+  └── {user_id}/              # 用户事件数据
+sync_state/
+  └── {user_id}/              # 同步状态
+uploads/
+  └── {user_id}/{note_id}/    # 图片上传目录
+```
 
 ---
 
-## 联网与离线 / 内网
+## 部署指南
 
-- **日常使用**：记笔记、看列表、编辑、保存到本地等，**不需要联网**。只有「从笔记提取」和「AI 聊天」会调用你配置的 API（需能访问对应接口）。
-- **首次在本机运行**：创建虚拟环境、执行 `pip install -r requirements.txt` 时需要**能联网**，以便下载 Flask。之后只要不删掉项目里的 `.venv` 文件夹，再启动就**不需要联网**，直接双击 `启动.bat` / `启动.command` 或运行 `python run.py` 即可。
-- **内网 / 无网络环境**：  
-  - 若该电脑**从未装过 Python**：需要先在能联网的电脑上下载好 [Python 安装包](https://www.python.org/downloads/) 和 [Flask 的 wheel](https://pypi.org/project/Flask/#files)，用 U 盘拷到内网电脑安装 Python，再离线安装 Flask（`pip install 本地的flask.whl`），最后把 ChickenNoteLM 项目拷过去，用 `启动.bat` / `启动.command` 或 `python run.py` 启动。  
-  - 若该电脑**已有 Python**：把整个 ChickenNoteLM 项目（含已创建好的 `.venv`）拷过去，在同一路径下双击 `启动.bat` / `启动.command`，或在该目录下用 `.venv` 里的 Python 运行 `python run.py`，一般即可在内网下使用（注意：`.venv` 里可能带绝对路径，若换电脑或路径变了，可能需在新环境重新执行一次「双击启动」让脚本再建一遍 `.venv`）。
+### 环境要求
+- Python 3.10+
+- nginx
+- Linux 服务器
 
-结论：**只要本机有 Python，且依赖已装好（或能离线安装），运行 `run.py` 即可在无网/内网下使用本项目**；Python 本身仍需用户在本机安装（或由管理员预装），本项目不内置 Python。
+### 安装依赖
 
----
+```bash
+pip install -r requirements.txt
+pip install gevent gevent-websocket  # 生产环境必需
+```
 
-## 关于 Python：手把手安装 vs 预置
+### 生产环境启动
 
-- **推荐做法**：在 README 里**手把手教用户安装 Python**（如上「安装 Python」一步），并说明「首次运行需联网装依赖，之后可离线」。这样仓库体积小、不绑死系统，兼容各系统版本，也方便你后续更新代码。
-- **预置轻量 Python**（例如 Windows 上用 [Python 嵌入式包](https://docs.python.org/3/using/windows.html#embedded-distribution)）：可以把「无需用户自己装 Python」做成可选方案，但需要你为不同系统/架构单独打包、维护，且仓库或发布包会变大。若你希望做成「解压即用、完全不装 Python」的绿色版，可以再单独做一版带嵌入式 Python 的 启动 脚本和说明；当前仓库仍以「用户自装 Python + 一键启动」为主，便于大多数人直接克隆或下载使用。
+```bash
+python production_server.py
+```
 
----
+服务将监听 `0.0.0.0:5002`，配合 nginx 反向代理使用。
 
-## 日常怎么用（只看界面就行）
+### nginx 配置示例
 
-### 写笔记
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
 
-- 左侧边栏点 **「新建笔记」**，右侧就会出现一篇空白笔记。
-- 上面填**标题**，下面大框里写**正文**（可以换行、加列表，和写文档一样）。
-- 写的时候会**自动保存**，不用专门点保存。左边列表里点另一篇笔记就能切换。
+    location / {
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
 
-### 把笔记变成待办
+    location /uploads/ {
+        alias /var/www/chickennoteLM/uploads/;
+    }
+}
+```
 
-- 在左侧笔记列表里**勾选**一篇或几篇笔记（点笔记前面的小方框）。
-- 右侧或下方找到 **「事件」** 区域，点 **「从笔记提取」**。
-- 等几秒，AI 会从你选中的笔记里抽出「要做的事」，显示在事件列表里，你可以再改标题、时间、标签。
+### systemd 服务配置
 
-（如果提示要配置 API，见下文「想用 AI 功能」。）
+```ini
+[Unit]
+Description=ChickenNoteLM Service
+After=network.target
 
-### 带着笔记和 AI 聊天
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/chickennoteLM
+Environment="SECRET_KEY=your-secret-key-here"
+ExecStart=/var/www/chickennoteLM/venv/bin/python production_server.py
+Restart=always
 
-- 同样在左侧**勾选**你想让 AI 看的几篇笔记。
-- 点开右侧的 **「AI 聊天」**，在输入框里输入问题，比如「帮我总结上面几篇」「哪件事最紧急」。
-- AI 会结合你勾选的那几篇笔记来回答。聊天记录会保留，下次打开还能看到。
-
-### 想用 AI 功能（提取待办、聊天）
-
-第一次用「从笔记提取」或「AI 聊天」时，可能会提示你要先配置。点界面上的 **「设置」**（齿轮图标），填三样东西：
-
-1. **API Key**：你的 OpenAI（或兼容服务）的密钥，从对方网站获取。
-2. **Base URL**：一般用 OpenAI 的话填 `https://api.openai.com/v1` 即可；如果用别的服务，按对方说明填。
-3. **模型**：比如 `gpt-3.5-turbo` 或 `gpt-4`，按你有的选。
-
-填好保存后，再试「从笔记提取」和「AI 聊天」就可以了。这些配置只存在你当前这台电脑的浏览器里，不会上传到别处。
-
-**使用 OpenClaw 作为对话后端**：若本机已安装并运行 [OpenClaw](https://github.com/openclaw/openclaw)，可在设置中勾选「使用 OpenClaw 本地网关作为对话后端」，并填写网关地址和 Token（见上）。需在 OpenClaw 配置中启用 HTTP chatCompletions 并重启网关后，页面里的「AI 聊天」才会连上。
-
-**在页面里直接跑 OpenClaw TUI**：不依赖网关配置，点顶部栏的 **「OpenClaw 终端」**（终端图标），会在右侧打开一个内嵌终端，自动在本机执行 `openclaw tui`，和你在本机命令行里运行的效果一致。需已安装 [OpenClaw](https://github.com/openclaw/openclaw) 且 `openclaw` 在系统 PATH 中。若内嵌终端连不上，可安装 `gevent` 和 `gevent-websocket` 后重启后端（`pip install gevent gevent-websocket`），或直接在本机终端运行 `openclaw tui`。
-
----
-
-## 遇到问题看这里
-
-- **打开页面后笔记、待办是空的？**  
-  先确认已通过 **`启动.bat` / `启动.command`** 或 **`python run.py`** 把后端跑起来（黑色/终端窗口别关）。然后刷新一下网页。第一次用本来就是空的，新建一篇笔记试试。
-
-- **点「从笔记提取」或「AI 聊天」报错？**  
-  多半是还没在「设置」里填好 API Key、Base URL 和模型，或者 Key 无效、网络访问不了。检查一下这三项是否正确。
-
-- **关掉浏览器再打开，笔记还在吗？**  
-  在的。只要后端（`run.py` / chickennotelm_server）一直在运行，你的笔记和待办会保存在本机的 `notefile/`、`eventdata/` 等文件夹里，下次打开同一台电脑、同一个浏览器，数据都会在。
+[Install]
+WantedBy=multi-user.target
+```
 
 ---
 
-如果你觉得好用，欢迎把这份说明分享给和你一样「不想折腾、只想记笔记 + 让 AI 帮忙整理」的朋友。
+## API 文档
+
+### 认证接口
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/auth/login` | POST | 用户登录（传入 username） |
+| `/api/auth/logout` | POST | 用户登出 |
+| `/api/auth/me` | GET | 获取当前登录用户 |
+
+### 笔记接口
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/notes` | GET | 获取当前用户所有笔记（基于 notes_index.json） |
+| `/api/sync/notes-events` | POST | 全量同步笔记和事件 |
+
+### 同步接口
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/sync/status` | GET | 获取服务器同步状态（含笔记修改时间） |
+| `/api/sync/pull` | POST | 从服务器拉取变更（基于 modified_at） |
+| `/api/sync/push` | POST | 推送本地变更到服务器 |
+| `/api/sync/resolve` | POST | 解决同步冲突 |
+
+### 上传接口
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/uploads/image` | POST | 上传图片（需登录，返回 Markdown 路径） |
+
+---
+
+## 配置说明
+
+### 环境变量
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `SECRET_KEY` | Flask Session 密钥 | dev-secret-change-in-production |
+
+### AI 配置
+
+在网页端的「设置」中配置：
+- **API Key**: OpenAI 或兼容服务的密钥
+- **Base URL**: API 基础地址
+- **模型**: 如 `gpt-3.5-turbo`
+
+---
+
+## 文件说明
+
+```
+chickennotelm_server.py      # Flask 后端主文件（含用户隔离、增量同步、notes_index）
+production_server.py         # 生产环境启动脚本
+index.html                   # 前端主页面
+js/                          # 前端 JavaScript 模块
+  ├── main.js               # 应用入口
+  ├── state.js              # 状态管理（含本地变更保护窗口）
+  ├── notes.js              # 笔记功能（含批量删除修复）
+  ├── chat.js               # AI 对话
+  ├── events.js             # 事件提取
+  ├── import.js             # 数据导入
+  ├── export.js             # 数据导出
+  ├── paste-image.js        # 图片粘贴/拖拽上传
+  ├── ai-format.js          # AI 格式化
+  └── data-service.js       # 数据服务层（含增量同步逻辑）
+sw.js                        # Service Worker（离线支持，cache v4）
+FEATURE_LIST.md              # 功能清单
+```
+
+---
+
+## 同步机制说明
+
+### 增量同步流程
+1. **本地变更时**：标记 `__lastLocalMutationAt` 时间戳
+2. **同步触发条件**：在线状态、无进行中的同步、本地变更后超过 5 秒
+3. **推送阶段（push）**：将本地 pending 变更（含删除）推送到服务器
+4. **拉取阶段（pull）**：获取服务器上更新的笔记和已删除的笔记 ID
+5. **本地应用**：更新 IndexedDB 和 state
+
+### 删除回弹问题修复
+- **问题**：删除笔记后，同步时会从服务器拉回旧数据，导致笔记"复活"
+- **修复**：
+  - 服务端引入 `notes_index.json` 作为笔记列表权威来源
+  - 调整同步顺序为「先推后拉」，确保删除操作先送达服务器
+  - 前端增加 5 秒本地变更保护窗口，防止旧数据回灌
+
+---
+
+## 分支说明
+
+- `main`: 本地开发版本（单用户、无登录）
+- `cloud-deployed`: 云端部署版本（多用户、Session 认证、增量同步）✅ 当前分支
+
+---
+
+## 最近更新
+
+### 2026-03-17
+- ✅ 修复笔记删除后回弹问题
+- ✅ 引入 `notes_index.json` 索引化方案
+- ✅ 优化增量同步顺序（先推后拉）
+- ✅ 增加本地变更保护窗口机制
+
+### 2026-03-14
+- ✅ 修复保存链路递归触发问题
+- ✅ 修复编辑区正文变空问题
+- ✅ 修复 401 未登录时的同步噪音
+- ✅ 升级 Service Worker 缓存策略
+
+---
+
+## 许可证
+
+MIT License

@@ -271,7 +271,7 @@ function renderMarkdown(text) {
 async function ensureCurrentChatSession() {
     if (state.currentChatId) return;
     try {
-        const res = await fetch('/api/chats', { method: 'GET' });
+        const res = await fetch('/api/chats', { method: 'GET', credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
             state.chatSessions = data.chats || [];
@@ -307,7 +307,7 @@ async function loadChatHistoryList() {
     const select = document.getElementById('chatSessionSelect');
     if (!select) return;
     try {
-        const res = await fetch('/api/chats', { method: 'GET' });
+        const res = await fetch('/api/chats', { method: 'GET', credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         state.chatSessions = data.chats || [];
@@ -343,7 +343,7 @@ async function handleChatSessionChange(selectEl) {
     const chatId = selectEl.value;
     if (!chatId) return;
     try {
-        const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}`, { method: 'GET' });
+        const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}`, { method: 'GET', credentials: 'include' });
         if (!res.ok) return;
         const chat = await res.json();
         state.currentChatId = chat.id;

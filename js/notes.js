@@ -135,14 +135,38 @@ function updateWordCount() {
     document.getElementById('wordCount').textContent = `${document.getElementById('noteEditor').value.length} 字`;
 }
 
-function batchDelete() {
+async function batchDelete() {
+    // 获取要删除的笔记ID列表
+    const idsToDelete = Array.from(state.selectedNotes);
+    
+    // 1. 先从 IndexedDB 和同步队列中删除
+    if (window.dataService && window.dataService.db) {
+        for (const id of idsToDelete) {
+            try {
+                await window.dataService.deleteNote(id);
+            } catch (e) {
+                console.error('[batchDelete] Failed to delete note from IndexedDB:', id, e);
+            }
+        }
+    }
+    
+    // 2. 更新 state
     withAutoSave(() => {
         state.notes = state.notes.filter(n => !state.selectedNotes.has(n.id));
         state.selectedNotes.clear();
         if(state.notes.length) state.currentNoteId = state.notes[0].id;
         else state.currentNoteId = null;
     });
+    
     if (state.currentNoteId) loadNote(state.currentNoteId);
+    else {
+        // 如果没有笔记了，清空编辑器
+        document.getElementById('currentNoteTitle').value = '';
+        document.getElementById('noteEditor').value = '';
+        renderNoteList();
+    }
+    
+    showToast(`已删除 ${idsToDelete.length} 篇笔记`);
 }
 
 function batchDuplicate() {
@@ -185,6 +209,17 @@ window.batchRename = batchRename;
 window.batchImportToChat = batchImportToChat;
 window.batchExtractEvents = batchExtractEvents;
 
+// 保存原始Markdown内容，用于预览模式切换回编辑模式时恢复
+let _originalMarkdownContent = '';
+let _lastEditorView = 'edit';
+const IMAGE_URL_LINE_RE = /(^|\n)(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|svg)(?:\?[^\s<>"']*)?)(?=\n|$)/gi;
+
+function normalizeMarkdownForPreview(content) {
+    return (content || '').replace(IMAGE_URL_LINE_RE, function(match, prefix, url) {
+        return `${prefix}![](${url})`;
+    });
+}
+
 function renderEditorView() {
     const editor = document.getElementById('noteEditor');
     const preview = document.getElementById('notePreview');
@@ -192,15 +227,37 @@ function renderEditorView() {
     if (!editor || !preview || !btn) return;
 
     if (state.editorView === 'preview') {
+        // 切换到预览模式 - 保存原始Markdown内容
+        _originalMarkdownContent = editor.value || '';
+        
         editor.classList.add('hidden');
         preview.classList.remove('hidden');
-        preview.innerHTML = window.marked ? window.marked.parse(editor.value || '') : (editor.value || '');
-        btn.textContent = '预览模式：开';
+        preview.contentEditable = 'true';
+        const previewSource = normalizeMarkdownForPreview(_originalMarkdownContent);
+        preview.innerHTML = window.marked ? window.marked.parse(previewSource) : previewSource;
+        btn.textContent = '编辑模式';
+        btn.classList.add('text-blue-600');
+        
+        // 添加提示
+        showToast('预览模式：所见即所得，切换回编辑模式保留原格式', 'info');
     } else {
+        // 切换到编辑模式 - 恢复原始Markdown内容（保留格式标记）
         editor.classList.remove('hidden');
         preview.classList.add('hidden');
-        btn.textContent = '预览模式：关';
+        preview.contentEditable = 'false';
+        btn.textContent = '预览模式';
+        btn.classList.remove('text-blue-600');
+        
+        // 仅在“刚从预览切回编辑”时恢复原始 Markdown，避免普通加载时把正文清空
+        if (_lastEditorView === 'preview' && _originalMarkdownContent !== editor.value) {
+            editor.value = _originalMarkdownContent;
+            // 触发自动保存（如果内容有变化）
+            if (typeof autoSave === 'function') {
+                autoSave();
+            }
+        }
     }
+    _lastEditorView = state.editorView;
 }
 
 function toggleEditorView() {
@@ -213,9 +270,75 @@ function updateEditorPreview() {
     const editor = document.getElementById('noteEditor');
     const preview = document.getElementById('notePreview');
     if (!editor || !preview) return;
-    preview.innerHTML = window.marked ? window.marked.parse(editor.value || '') : (editor.value || '');
+    const previewSource = normalizeMarkdownForPreview(editor.value || '');
+    preview.innerHTML = window.marked ? window.marked.parse(previewSource) : previewSource;
+}
+
+/**
+ * 同步预览区内容到编辑器（保留原始Markdown格式）
+ * 注意：此函数现在仅用于用户明确要求保存预览修改的场景
+ */
+function syncPreviewToEditor() {
+    // 警告：此操作会丢失Markdown格式标记
+    console.warn('syncPreviewToEditor: 此操作会将HTML转换为纯文本，可能丢失Markdown格式');
+    
+    const editor = document.getElementById('noteEditor');
+    const preview = document.getElementById('notePreview');
+    if (!editor || !preview) return;
+    
+    // 使用原始Markdown内容，而不是从预览区提取
+    // 这样可以确保 # ** * 等格式标记不会丢失
+    if (_originalMarkdownContent && _originalMarkdownContent !== editor.value) {
+        editor.value = _originalMarkdownContent;
+        autoSave();
+    }
+}
+
+/**
+ * 初始化预览区编辑功能
+ * 
+ * 重要说明：预览模式使用 contentEditable 实现所见即所得编辑
+ * 但切换回编辑模式时，会恢复原始 Markdown 内容（保留 # ** * 等格式标记）
+ * 而不是从预览区提取HTML内容（那样会丢失Markdown标记）
+ */
+function initPreviewEditable() {
+    const preview = document.getElementById('notePreview');
+    if (!preview) return;
+    
+    // 监听输入事件 - 仅更新字数统计，不直接同步到编辑器（避免丢失格式）
+    preview.addEventListener('input', function() {
+        if (state.editorView === 'preview') {
+            // 仅更新字数显示，不改变原始Markdown内容
+            const wordCount = (preview.innerText || preview.textContent || '').length;
+            const wordCountEl = document.getElementById('wordCount');
+            if (wordCountEl) {
+                wordCountEl.textContent = `${wordCount} 字`;
+            }
+        }
+    });
+    
+    // 监听失去焦点事件
+    preview.addEventListener('blur', function() {
+        if (state.editorView === 'preview') {
+            // 在预览模式的编辑不自动保存到原始Markdown
+            // 如需保存预览修改，需要使用专门的 "保存预览修改" 功能
+            console.log('预览模式：编辑未自动保存，切换回编辑模式将保留原格式');
+        }
+    });
+    
+    // 阻止某些快捷键的默认行为
+    preview.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + S 切换到编辑模式并保存
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            // 切换回编辑模式（会自动保存）
+            toggleEditorView();
+        }
+    });
 }
 
 window.renderEditorView = renderEditorView;
 window.toggleEditorView = toggleEditorView;
 window.updateEditorPreview = updateEditorPreview;
+window.syncPreviewToEditor = syncPreviewToEditor;
+window.initPreviewEditable = initPreviewEditable;
