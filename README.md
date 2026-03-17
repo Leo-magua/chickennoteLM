@@ -180,7 +180,7 @@ js/                          # 前端 JavaScript 模块
   ├── paste-image.js        # 图片粘贴/拖拽上传
   ├── ai-format.js          # AI 格式化
   └── data-service.js       # 数据服务层（含增量同步逻辑）
-sw.js                        # Service Worker（离线支持，cache v4）
+sw.js                        # Service Worker（离线支持，cache v9）
 FEATURE_LIST.md              # 功能清单
 ```
 
