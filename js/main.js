@@ -42,6 +42,13 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleEventModule();
     }
 
+    // 恢复笔记列表侧边栏折叠状态
+    try {
+        var saved = localStorage.getItem('notemind_sidebarCollapsed');
+        if (saved === '1') state.sidebarCollapsed = true;
+    } catch (e) {}
+    if (window.updateSidebarCollapsedUI) updateSidebarCollapsedUI();
+
     // 点击其他区域关闭排序下拉
     document.addEventListener('click', (e) => {
         const dropdown = document.getElementById('sortDropdown');

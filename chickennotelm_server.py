@@ -4,6 +4,7 @@ import queue
 import re
 import select
 import shutil
+import subprocess
 import sys
 import threading
 import uuid
@@ -25,6 +26,10 @@ BASE_DIR = Path(__file__).resolve().parent
 NOTE_DIR = BASE_DIR / "notefile"
 CHAT_DIR = BASE_DIR / "chatdata"
 EVENT_DIR = BASE_DIR / "eventdata"
+CLOUD_SSH_KEY = os.path.expanduser("~/.ssh/volcengine_ecs.pem")
+CLOUD_SSH_HOST = "root@180.184.99.247"
+CLOUD_PROJECT_DIR = "/var/www/chickennoteLM"
+CLOUD_NOTE_ROOT = f"{CLOUD_PROJECT_DIR}/notefile"
 
 for d in (NOTE_DIR, CHAT_DIR, EVENT_DIR):
     d.mkdir(exist_ok=True)
@@ -123,6 +128,162 @@ def sync_notes_events():
     events_path.write_text(json.dumps(events, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return jsonify({"status": "ok"})
+
+
+def _build_note_files(note: dict) -> tuple[Path, Path]:
+    note_id = str(note.get("id") or uuid.uuid4())
+    title = note.get("title") or ""
+    content = note.get("content") or ""
+    updated_at = note.get("updatedAt") or now_iso()
+
+    base = f"{slugify(title)}_{note_id}"
+    md_path = NOTE_DIR / f"{base}.md"
+    meta_path = NOTE_DIR / f"{base}.json"
+    md_path.write_text(content, encoding="utf-8")
+    meta = {"id": note_id, "title": title, "updatedAt": updated_at}
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return md_path, meta_path
+
+
+def _sanitize_cloud_user_id(raw: str) -> str:
+    if not raw or not isinstance(raw, str):
+        return ""
+    return re.sub(r"[^a-zA-Z0-9_-]", "", raw.strip())[:64]
+
+
+def _remote_list_user_dirs(ssh_base_cmd: list[str]) -> list[str]:
+    cmd = ssh_base_cmd + [f"bash -lc \"if [ -d '{CLOUD_NOTE_ROOT}' ]; then ls -1 '{CLOUD_NOTE_ROOT}'; fi\""]
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    dirs = []
+    for line in (result.stdout or "").splitlines():
+        user_id = _sanitize_cloud_user_id(line)
+        if user_id:
+            dirs.append(user_id)
+    return sorted(set(dirs))
+
+
+def _remote_rebuild_note_index(ssh_base_cmd: list[str], remote_dir: str):
+    # 使用 heredoc 传递多行 Python，避免 -c 里 \n 转义导致语法错误
+    py_code = f"""python3 - <<'PY'
+import json
+from datetime import datetime
+from pathlib import Path
+
+d = Path({remote_dir!r})
+d.mkdir(parents=True, exist_ok=True)
+idx = []
+for p in d.glob("*.json"):
+    if p.name == "notes_index.json":
+        continue
+    try:
+        meta = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        continue
+    note_id = str(meta.get("id") or p.stem)
+    title = meta.get("title", "")
+    base = p.stem
+    updated = meta.get("updatedAt") or datetime.utcnow().isoformat()
+    modified = int(p.stat().st_mtime * 1000)
+    idx.append({{
+        "id": note_id,
+        "title": title,
+        "base": base,
+        "updatedAt": updated,
+        "modified_at": modified,
+    }})
+
+payload = {{
+    "version": 1,
+    "updatedAt": datetime.utcnow().isoformat(),
+    "notes": idx,
+}}
+(d / "notes_index.json").write_text(
+    json.dumps(payload, ensure_ascii=False, indent=2),
+    encoding="utf-8",
+)
+PY"""
+    subprocess.run(
+        ssh_base_cmd + [py_code],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+@app.post("/api/cloud/sync-notes")
+def sync_notes_to_cloud():
+    """
+    单向同步：把传入的笔记从本地同步到云端目录 /var/www/chickennoteLM/notefile/<user_id>
+    """
+    body = request.get_json(silent=True) or {}
+    notes = body.get("notes") or []
+    cloud_user_id = _sanitize_cloud_user_id(body.get("cloudUserId") or "")
+    if not isinstance(notes, list) or not notes:
+        return jsonify({"status": "error", "error": "notes 不能为空"}), 400
+
+    if not Path(CLOUD_SSH_KEY).exists():
+        return jsonify({"status": "error", "error": f"SSH 私钥不存在: {CLOUD_SSH_KEY}"}), 500
+
+    try:
+        files_to_sync = []
+        for note in notes:
+            if not isinstance(note, dict):
+                continue
+            md_path, meta_path = _build_note_files(note)
+            files_to_sync.extend([str(md_path), str(meta_path)])
+        if not files_to_sync:
+            return jsonify({"status": "error", "error": "没有有效的笔记可同步"}), 400
+
+        ssh_base_cmd = [
+            "ssh",
+            "-i",
+            CLOUD_SSH_KEY,
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            CLOUD_SSH_HOST,
+        ]
+        subprocess.run(ssh_base_cmd + [f"mkdir -p {CLOUD_NOTE_ROOT}"], check=True, capture_output=True, text=True)
+
+        if cloud_user_id:
+            target_user_ids = [cloud_user_id]
+        else:
+            existing_user_dirs = _remote_list_user_dirs(ssh_base_cmd)
+            target_user_ids = existing_user_dirs if existing_user_dirs else ["default"]
+
+        synced_targets = []
+        for user_id in target_user_ids:
+            remote_user_dir = f"{CLOUD_NOTE_ROOT}/{user_id}"
+            subprocess.run(ssh_base_cmd + [f"mkdir -p {remote_user_dir}"], check=True, capture_output=True, text=True)
+
+            rsync_cmd = [
+                "rsync",
+                "-az",
+                "-e",
+                f"ssh -i {CLOUD_SSH_KEY} -o StrictHostKeyChecking=accept-new",
+                *files_to_sync,
+                f"{CLOUD_SSH_HOST}:{remote_user_dir}/",
+            ]
+            subprocess.run(rsync_cmd, check=True, capture_output=True, text=True)
+            _remote_rebuild_note_index(ssh_base_cmd, remote_user_dir)
+            synced_targets.append(user_id)
+    except subprocess.CalledProcessError as e:
+        stderr = (e.stderr or "").strip()
+        stdout = (e.stdout or "").strip()
+        msg = stderr or stdout or str(e)
+        return jsonify({"status": "error", "error": msg}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+    return jsonify(
+        {
+            "status": "ok",
+            "synced": len(files_to_sync) // 2,
+            "remoteDir": CLOUD_NOTE_ROOT,
+            "targetUsers": synced_targets,
+        }
+    )
 
 
 @app.route("/api/openclaw/health", methods=["GET"])

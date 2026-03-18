@@ -416,10 +416,37 @@ function updateChatContextUI() {
         const note = state.notes.find(n => n.id === id);
         if (!note) return '';
         return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-            ${escapeHtmlForChat(note.title)} <button type="button" onclick="state.chatContext.delete('${id}'); updateChatContextUI()" class="ml-1 hover:text-red-500">×</button>
+            ${escapeHtmlForChat(note.title)} <button type="button" onclick="state.chatContext.delete('${id}'); updateChatContextUI(); renderChatSuggestedNotes();" class="ml-1 hover:text-red-500">×</button>
         </span>`;
     }).join('');
     container.innerHTML = pills || '<span class="text-xs text-slate-400">未选择上下文</span>';
+    renderChatSuggestedNotes();
+}
+
+// 推荐可加入对话的笔记（未在上下文中的，按最近更新取前几条，每条带 + 点击加入）
+function renderChatSuggestedNotes() {
+    const listEl = document.getElementById('chatSuggestedNotesList');
+    const wrapEl = document.getElementById('chatSuggestedNotes');
+    if (!listEl || !wrapEl) return;
+    const suggested = (state.notes || [])
+        .filter(function (n) { return !state.chatContext.has(n.id); })
+        .sort(function (a, b) { return (b.updatedAt || '').localeCompare(a.updatedAt || ''); })
+        .slice(0, 6);
+    if (suggested.length === 0) {
+        wrapEl.classList.add('hidden');
+        return;
+    }
+    wrapEl.classList.remove('hidden');
+    listEl.innerHTML = suggested.map(function (note) {
+        var title = (note.title || '未命名').substring(0, 12);
+        if ((note.title || '').length > 12) title += '…';
+        var safeTitle = escapeHtmlForChat(title);
+        return '<span class="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-700">' +
+            '<span class="max-w-[100px] truncate">' + safeTitle + '</span>' +
+            '<button type="button" class="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors" title="加入当前对话" onclick="addNoteToChatContext(\'' + note.id + '\'); updateChatContextUI();">' +
+            '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></button>' +
+            '</span>';
+    }).join('');
 }
 
 function toggleAddNoteToChatMenu(ev) {
@@ -473,6 +500,7 @@ window.addChatMessage = addChatMessage;
 window.toggleAddNoteToChatMenu = toggleAddNoteToChatMenu;
 window.closeAddNoteToChatMenuOnClick = closeAddNoteToChatMenuOnClick;
 window.addNoteToChatContext = addNoteToChatContext;
+window.renderChatSuggestedNotes = renderChatSuggestedNotes;
 window.chatActionSaveToNote = chatActionSaveToNote;
 window.chatActionRegenerate = chatActionRegenerate;
 window.chatActionInsertToNote = chatActionInsertToNote;

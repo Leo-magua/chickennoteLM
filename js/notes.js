@@ -103,6 +103,7 @@ function saveCurrentNote() {
 
 var _autoSaveDebounceTimer = null;
 var AUTO_SAVE_DELAY_MS = 1500;
+var _cloudSyncInProgress = false;
 
 function autoSave() {
     updateWordCount();
@@ -168,6 +169,65 @@ function batchExtractEvents() {
     renderNoteList();
 }
 
+async function syncNotesToCloud(notes, successMessage) {
+    if (!Array.isArray(notes) || !notes.length) {
+        showToast('没有可同步的笔记');
+        return;
+    }
+    const cloudUserId = (state.settings.cloudUserId || '').trim();
+    if (!cloudUserId) {
+        showToast('请先在系统配置中填写云端用户ID');
+        return;
+    }
+    if (_cloudSyncInProgress) {
+        showToast('正在同步中，请稍候...');
+        return;
+    }
+    _cloudSyncInProgress = true;
+    showToast('正在同步到云端...', 0);
+    try {
+        const res = await fetch('http://127.0.0.1:5002/api/cloud/sync-notes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ notes, cloudUserId })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.status !== 'ok') {
+            const err = data.error || `HTTP ${res.status}`;
+            throw new Error(err);
+        }
+        const syncedCount = Number.isFinite(data.synced) ? data.synced : notes.length;
+        showToast(successMessage || `已同步 ${syncedCount} 条笔记到云端`);
+    } catch (e) {
+        showToast(`云端同步失败：${e.message || e}`);
+    } finally {
+        _cloudSyncInProgress = false;
+    }
+}
+
+async function syncSelectedNotesToCloud() {
+    if (state.selectedNotes.size === 0) {
+        showToast('请先选择要同步的笔记');
+        return;
+    }
+    // 防止当前编辑尚未进入 state，先强制落盘
+    saveCurrentNoteContentOnly();
+    const notes = state.notes.filter(n => state.selectedNotes.has(n.id));
+    await syncNotesToCloud(notes, `已同步 ${notes.length} 条选中笔记到云端`);
+}
+
+async function syncCurrentNoteToCloud() {
+    saveCurrentNoteContentOnly();
+    const note = state.notes.find(n => n.id === state.currentNoteId);
+    if (!note) {
+        showToast('当前没有可同步的笔记');
+        return;
+    }
+    await syncNotesToCloud([note], `已同步当前笔记：${note.title || '未命名笔记'}`);
+}
+
 // 导出函数到全局
 window.renderNoteList = renderNoteList;
 window.handleNoteClick = handleNoteClick;
@@ -184,6 +244,8 @@ window.batchDuplicate = batchDuplicate;
 window.batchRename = batchRename;
 window.batchImportToChat = batchImportToChat;
 window.batchExtractEvents = batchExtractEvents;
+window.syncSelectedNotesToCloud = syncSelectedNotesToCloud;
+window.syncCurrentNoteToCloud = syncCurrentNoteToCloud;
 
 function renderEditorView() {
     const editor = document.getElementById('noteEditor');

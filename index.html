@@ -46,6 +46,9 @@
             animation: fadeIn 0.2s ease-out;
         }
 
+        #sidebar-panel.sidebar-panel-base {
+            min-width: 0;
+        }
         /* Resizer styles */
         .resizer {
             width: 8px;
@@ -125,35 +128,46 @@
 </head>
 <body class="bg-slate-200 text-slate-900 h-screen overflow-hidden p-2 flex gap-1">
 
-    <!-- Sidebar Panel: Note List -->
-    <aside id="sidebar-panel" class="w-72 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-shrink-0 relative overflow-hidden transition-all">
-        <!-- Sidebar Header -->
-        <div class="p-4 border-b border-slate-200 bg-slate-50/80">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="font-semibold text-slate-700 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                    笔记列表
-                </h2>
-                <div class="flex gap-1">
-                    <button onclick="selectAllNotes()" class="p-1.5 hover:bg-slate-200 rounded text-slate-600 text-xs font-medium transition-colors" title="全选">全选</button>
-                    <button onclick="createNewNote()" class="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition-colors" title="新建笔记">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+    <!-- 折叠后显示的悬浮图标：点击展开笔记列表 -->
+    <button type="button" id="sidebar-float-btn" class="hidden fixed left-3 top-1/2 -translate-y-1/2 z-[100] w-10 h-10 rounded-full bg-white/95 shadow-md border border-slate-200/80 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-700 hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/50" onclick="toggleSidebarCollapse()" title="展开笔记列表" aria-label="展开笔记列表">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+
+    <!-- Sidebar Panel: Note List（可折叠） -->
+    <aside id="sidebar-panel" class="sidebar-panel-base w-72 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-shrink-0 relative overflow-hidden transition-all duration-200">
+        <div id="sidebar-content" class="flex flex-col flex-1 min-w-0">
+            <!-- Sidebar Header -->
+            <div class="p-4 border-b border-slate-200 bg-slate-50/80 flex-shrink-0">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="font-semibold text-slate-700 flex items-center gap-2">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        <span>笔记列表</span>
+                    </h2>
+                    <div class="flex gap-1 items-center">
+                        <button onclick="toggleSidebarCollapse()" class="p-1.5 hover:bg-slate-200 rounded text-slate-600 transition-colors" title="折叠笔记列表">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <button onclick="selectAllNotes()" class="p-1.5 hover:bg-slate-200 rounded text-slate-600 text-xs font-medium transition-colors" title="全选">全选</button>
+                        <button onclick="createNewNote()" class="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition-colors" title="新建笔记">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <!-- Batch Actions -->
+                <div id="batchActions" class="hidden flex flex-wrap gap-1.5 animate-slide-in">
+                    <button onclick="batchRename()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">重命名</button>
+                    <button onclick="batchDuplicate()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">副本</button>
+                    <button onclick="syncSelectedNotesToCloud()" class="flex-1 px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-xs text-blue-700">同步云端</button>
+                    <button onclick="batchImportToChat()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">导入对话</button>
+                    <button onclick="batchExtractEvents()" class="flex-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded text-xs text-amber-700">提取事件</button>
+                    <button onclick="batchDelete()" class="px-2 py-1 bg-red-100 hover:bg-red-200 rounded text-xs text-red-700" title="删除选中笔记">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                 </div>
             </div>
-            <!-- Batch Actions -->
-            <div id="batchActions" class="hidden flex flex-wrap gap-1.5 animate-slide-in">
-                <button onclick="batchRename()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">重命名</button>
-                <button onclick="batchDuplicate()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">副本</button>
-                <button onclick="batchImportToChat()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">导入对话</button>
-                <button onclick="batchExtractEvents()" class="flex-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded text-xs text-amber-700">提取事件</button>
-                <button onclick="batchDelete()" class="px-2 py-1 bg-red-100 hover:bg-red-200 rounded text-xs text-red-700" title="删除选中笔记">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
-            </div>
+            <!-- Note List -->
+            <div id="noteListContainer" class="flex-1 overflow-y-auto p-2 space-y-1 min-h-0"></div>
         </div>
-        <!-- Note List -->
-        <div id="noteListContainer" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
     </aside>
 
     <div class="resizer" id="resizer-sidebar" data-panel="sidebar-panel" data-dir="right"></div>
@@ -181,6 +195,10 @@
                 <button onclick="saveCurrentNote()" class="hidden md:flex px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium text-slate-700 transition-colors items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                     保存
+                </button>
+                <button onclick="syncCurrentNoteToCloud()" class="hidden md:flex px-3 py-1.5 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm font-medium text-blue-700 transition-colors items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 014-4h1.586A4 4 0 0112 9h1a4 4 0 014 4M8 15l4-4 4 4m-4-4v10"></path></svg>
+                    同步云端
                 </button>
 
                 <!-- 导入数据按钮 (JSON上传) -->
@@ -222,6 +240,7 @@
                             class="hover:text-blue-600 transition-colors">
                         预览模式：关
                     </button>
+                    <button onclick="syncCurrentNoteToCloud()" class="hover:text-blue-600 transition-colors">同步当前到云端</button>
                     <button onclick="importCurrentNoteToChat()" class="hover:text-blue-600 transition-colors">导入AI对话</button>
                     <button onclick="extractEventsFromCurrent()" class="hover:text-amber-600 transition-colors">提取当前事件</button>
                 </div>
@@ -249,6 +268,14 @@
                 <button onclick="toggleAIChat()" class="p-1 hover:bg-slate-200 rounded text-slate-500" title="关闭 AI 对话面板">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
+            </div>
+        </div>
+
+        <!-- 推荐可加入对话的笔记 -->
+        <div id="chatSuggestedNotes" class="flex-shrink-0 px-3 py-2 border-b border-slate-200 bg-slate-50/50">
+            <div class="text-xs font-medium text-slate-500 mb-2">可加入对话的笔记</div>
+            <div id="chatSuggestedNotesList" class="flex flex-wrap gap-1.5">
+                <!-- 由 JS 渲染：每条笔记 + 加号按钮 -->
             </div>
         </div>
 
@@ -361,6 +388,11 @@
                     <div class="space-y-1.5">
                         <label class="text-sm font-medium text-slate-700">模型</label>
                         <input type="text" id="settingModel" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none text-sm" placeholder="gpt-3.5-turbo">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-sm font-medium text-slate-700">云端用户ID</label>
+                        <input type="text" id="settingCloudUserId" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none text-sm" placeholder="例如：windy">
+                        <p class="text-xs text-slate-500">用于同步到云端目录：notefile/&lt;用户ID&gt;</p>
                     </div>
                 </div>
                 <div class="space-y-1.5">

@@ -9,6 +9,7 @@ function toggleSettings() {
         document.getElementById('settingApiKey').value = state.settings.apiKey || '';
         document.getElementById('settingBaseUrl').value = state.settings.baseUrl || 'https://api.openai.com/v1';
         document.getElementById('settingModel').value = state.settings.model || 'gpt-3.5-turbo';
+        document.getElementById('settingCloudUserId').value = state.settings.cloudUserId || '';
         document.getElementById('settingPromptChat').value = state.settings.systemPromptChat || '';
         document.getElementById('settingPromptEvent').value = state.settings.systemPromptEvent || '';
     } else {
@@ -21,6 +22,7 @@ function saveSettings() {
     state.settings.apiKey = document.getElementById('settingApiKey').value;
     state.settings.baseUrl = document.getElementById('settingBaseUrl').value.replace(/\/$/, '');
     state.settings.model = document.getElementById('settingModel').value;
+    state.settings.cloudUserId = document.getElementById('settingCloudUserId').value.trim();
     state.settings.systemPromptChat = document.getElementById('settingPromptChat').value;
     state.settings.systemPromptEvent = document.getElementById('settingPromptEvent').value;
 

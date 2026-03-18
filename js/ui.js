@@ -44,13 +44,52 @@ document.addEventListener('mouseup', function() {
     }
 });
 
-// 面板开关
-function toggleSidebar() {
-    state.sidebarOpen = !state.sidebarOpen;
+// 笔记列表侧边栏：折叠后完全收起，只显示悬浮图标
+const SIDEBAR_WIDTH_EXPANDED = 288; // 18rem = w-72
+
+function updateSidebarCollapsedUI() {
     const panel = document.getElementById('sidebar-panel');
+    const content = document.getElementById('sidebar-content');
+    const floatBtn = document.getElementById('sidebar-float-btn');
     const resizer = document.getElementById('resizer-sidebar');
-    panel.classList.toggle('hidden', !state.sidebarOpen);
-    resizer.classList.toggle('hidden', !state.sidebarOpen);
+    if (!panel || !content || !resizer) return;
+
+    // 进入折叠：侧边栏不占空间，仅悬浮按钮可见
+    if (state.sidebarCollapsed) {
+        panel.style.width = '0';
+        panel.style.minWidth = '0';
+        panel.style.overflow = 'hidden';
+        panel.style.opacity = '0';
+        panel.style.pointerEvents = 'none';
+        content.classList.add('hidden');
+        resizer.classList.add('hidden');
+        if (floatBtn) floatBtn.classList.remove('hidden');
+    } else {
+        panel.style.width = SIDEBAR_WIDTH_EXPANDED + 'px';
+        panel.style.minWidth = '0';
+        panel.style.overflow = '';
+        panel.style.opacity = '';
+        panel.style.pointerEvents = '';
+        content.classList.remove('hidden');
+        resizer.classList.remove('hidden');
+        if (floatBtn) floatBtn.classList.add('hidden');
+    }
+    try {
+        localStorage.setItem('notemind_sidebarCollapsed', state.sidebarCollapsed ? '1' : '0');
+    } catch (e) {}
+}
+
+function toggleSidebarCollapse() {
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    updateSidebarCollapsedUI();
+}
+
+// 顶部左上角按钮：统一为折叠/展开侧边栏，避免和悬浮按钮冲突
+function toggleSidebar() {
+    const panel = document.getElementById('sidebar-panel');
+    if (panel) panel.classList.remove('hidden');
+    state.sidebarOpen = true;
+    toggleSidebarCollapse();
 }
 
 function toggleAIChat() {
@@ -114,6 +153,8 @@ function showToast(msg, duration = 3000) {
 
 // 导出
 window.toggleSidebar = toggleSidebar;
+window.toggleSidebarCollapse = toggleSidebarCollapse;
+window.updateSidebarCollapsedUI = updateSidebarCollapsedUI;
 window.toggleAIChat = toggleAIChat;
 window.toggleEventModule = toggleEventModule;
 window.showToast = showToast;
