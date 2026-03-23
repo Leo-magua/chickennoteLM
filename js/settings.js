@@ -35,16 +35,29 @@ function saveSettings() {
     state.settings.systemPromptEvent = state.settings.systemPromptEventExtract;
     state.settings.aiFormatPrompt = state.settings.markdownConvertPrompt;
 
-    localStorage.setItem('chickennotelm_settings', JSON.stringify(state.settings));
+    const sk = typeof window.getSettingsStorageKey === 'function' ? window.getSettingsStorageKey() : null;
+    if (sk) localStorage.setItem(sk, JSON.stringify(state.settings));
     toggleSettings();
     showToast('配置已更新');
 }
 
 function loadSettings() {
-    let saved = localStorage.getItem('chickennotelm_settings');
-    if (!saved && localStorage.getItem('notemind_settings')) {
+    const sk = typeof window.getSettingsStorageKey === 'function' ? window.getSettingsStorageKey() : null;
+    let saved = sk ? localStorage.getItem(sk) : null;
+    if (!saved && sk && localStorage.getItem('chickennotelm_settings')) {
+        saved = localStorage.getItem('chickennotelm_settings');
+        try {
+            localStorage.setItem(sk, saved);
+            localStorage.removeItem('chickennotelm_settings');
+        } catch (e) { /* ignore */ }
+    }
+    if (!saved && sk && localStorage.getItem('notemind_settings')) {
         saved = localStorage.getItem('notemind_settings');
-        if (saved) localStorage.setItem('chickennotelm_settings', saved);
+        if (saved) {
+            try {
+                localStorage.setItem(sk, saved);
+            } catch (e) { /* ignore */ }
+        }
     }
     if (saved) {
         try {

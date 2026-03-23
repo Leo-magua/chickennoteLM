@@ -11,16 +11,25 @@ class DataService {
     this.initPromise = null;
   }
 
+  resetInit() {
+    this.initPromise = null;
+  }
+
   async init() {
     if (this.initPromise) return this.initPromise;
-    
+
+    const uid = window.state?.currentUser;
+    if (!uid) {
+      console.warn('[DataService] init skipped: no currentUser');
+      return Promise.resolve();
+    }
+
     this.initPromise = new Promise(async (resolve) => {
-      // 等待 dbManager 初始化
       if (typeof dbManager !== 'undefined') {
         try {
-          await dbManager.init();
+          await dbManager.initForUser(uid);
           this.db = dbManager;
-          console.log('[DataService] IndexedDB ready');
+          console.log('[DataService] IndexedDB ready for user');
         } catch (e) {
           console.error('[DataService] IndexedDB init failed:', e);
         }
@@ -163,7 +172,11 @@ class DataService {
     if (!this.db) return;
     
     // 获取上次同步时间
-    const lastSyncAt = parseInt(localStorage.getItem('last_sync_at') || '0');
+    const syncKey = typeof window.getLastSyncAtStorageKey === 'function'
+      ? window.getLastSyncAtStorageKey()
+      : 'last_sync_at';
+    if (!syncKey) return;
+    const lastSyncAt = parseInt(localStorage.getItem(syncKey) || '0');
     const clientNoteIds = (await this.db.getAllNotes()).map(n => n.id);
     
     try {
@@ -218,8 +231,8 @@ class DataService {
       }
       
       // 保存同步时间
-      if (data.server_time) {
-        localStorage.setItem('last_sync_at', data.server_time.toString());
+      if (data.server_time && syncKey) {
+        localStorage.setItem(syncKey, data.server_time.toString());
       }
       
       console.log('[DataService] Pulled', data.updated_notes?.length || 0, 'updates');
@@ -301,9 +314,11 @@ class DataService {
         this.handleConflicts(data.conflicts);
       }
       
-      // 保存同步时间
-      if (data.server_time) {
-        localStorage.setItem('last_sync_at', data.server_time.toString());
+      const pushSyncKey = typeof window.getLastSyncAtStorageKey === 'function'
+        ? window.getLastSyncAtStorageKey()
+        : 'last_sync_at';
+      if (data.server_time && pushSyncKey) {
+        localStorage.setItem(pushSyncKey, data.server_time.toString());
       }
       
       console.log('[DataService] Pushed', changes.length, 'changes');
@@ -429,12 +444,7 @@ class DataService {
 // 创建全局实例
 const dataService = new DataService();
 
-// 初始化
-if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
-    dataService.init();
-  });
-}
+// 不在 DOMContentLoaded 自动 init；须在设置 state.currentUser 后由 main.runAppInit 调用
 
 // 导出到全局
 window.DataService = DataService;

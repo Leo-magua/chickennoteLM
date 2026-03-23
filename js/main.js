@@ -15,6 +15,7 @@ function enforceLoginPage() {
     const overlay = document.getElementById("loginOverlay");
     if (overlay) overlay.style.display = "flex";
     if (window.state) {
+        state.currentUser = null;
         state.currentNoteId = null;
         const editor = document.getElementById("noteEditor");
         const titleInput = document.getElementById("currentNoteTitle");
@@ -24,12 +25,47 @@ function enforceLoginPage() {
     }
 }
 
-async function runAppInit() {
+/**
+ * @param {string} [userId] 登录用户名（与后端 session 一致）；省略时从 /api/auth/me 获取
+ */
+async function runAppInit(userId) {
     const overlay = document.getElementById("loginOverlay");
     if (overlay) overlay.style.display = "none";
+
+    let uid = (userId && String(userId).trim()) || "";
+    if (!uid) {
+        try {
+            const me = await fetch("/api/auth/me", { credentials: "include" });
+            if (me.ok) {
+                const j = await me.json();
+                uid = (j && j.user_id) || "";
+            }
+        } catch (e) { /* ignore */ }
+    }
+    if (!uid) {
+        console.error("[runAppInit] 无有效 user_id");
+        enforceLoginPage();
+        return;
+    }
+    state.currentUser = uid.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 64) || uid;
+
+    if (window.dataService && typeof window.dataService.resetInit === "function") {
+        window.dataService.resetInit();
+    }
+
     loadSettings();
     if (window.dataService) await window.dataService.init();
-    await loadDataFromLocalStorage();
+
+    window.__lastCloudAuth = null;
+    let cloudAuth = { ok: false, useLocalFallback: true };
+    if (typeof window.applyCloudAuthorityOnLogin === "function") {
+        cloudAuth = await window.applyCloudAuthorityOnLogin();
+        window.__lastCloudAuth = cloudAuth;
+    }
+    if (cloudAuth.useLocalFallback) {
+        await loadDataFromLocalStorage();
+    }
+
     if ("serviceWorker" in navigator && window.SyncManager) {
         navigator.serviceWorker.ready.then((reg) => reg.sync.register("sync-notes").catch(() => {}));
     }
@@ -39,13 +75,22 @@ async function runAppInit() {
             if (state.currentNoteId) loadNote(state.currentNoteId);
             return;
         }
+        // 在线且云端已确认该账号无数据：保持空白，不注入演示笔记
+        const auth = window.__lastCloudAuth;
+        if (auth && auth.ok && !auth.useLocalFallback && auth.serverEmpty) {
+            renderNoteList();
+            return;
+        }
         window.loadDataFromServerIfEmpty().then(function() {
             if (!state.notes.length) {
-                state.notes = [
-                    { id: "1", title: "项目规划会议", content: "# 会议记录\n\n- [ ] 确定UI卡片圆角风格（今天）\n- [ ] 实现拖拽修改列宽功能", updatedAt: new Date().toISOString() },
-                    { id: "2", title: "学习计划", content: "本周重点：\n1. 深入学习 Tailwind\n2. 整理Flex布局的最佳实践\n*注意：下周一需要提交 Demo*。", updatedAt: new Date(Date.now() - 86400000).toISOString() }
-                ];
-                if (!state.currentNoteId) state.currentNoteId = state.notes[0].id;
+                // 仅回退本地/离线时仍无笔记，才注入演示数据
+                if (auth && auth.useLocalFallback) {
+                    state.notes = [
+                        { id: "1", title: "项目规划会议", content: "# 会议记录\n\n- [ ] 确定UI卡片圆角风格（今天）\n- [ ] 实现拖拽修改列宽功能", updatedAt: new Date().toISOString() },
+                        { id: "2", title: "学习计划", content: "本周重点：\n1. 深入学习 Tailwind\n2. 整理Flex布局的最佳实践\n*注意：下周一需要提交 Demo*。", updatedAt: new Date(Date.now() - 86400000).toISOString() }
+                    ];
+                    if (!state.currentNoteId) state.currentNoteId = state.notes[0].id;
+                }
             }
             renderNoteList();
             if (state.currentNoteId) loadNote(state.currentNoteId);
@@ -81,7 +126,9 @@ window.handleLoginSubmit = async function(ev) {
             body: JSON.stringify({ username: username })
         });
         if (!r.ok) { alert("登录失败"); return false; }
-        await runAppInit();
+        const loginJson = await r.json().catch(function () { return {}; });
+        const uid = loginJson.user_id || (document.getElementById("loginUsername") && document.getElementById("loginUsername").value || "").trim();
+        await runAppInit(uid);
     } catch (e) {
         alert("登录请求失败");
         return false;
@@ -101,7 +148,8 @@ document.addEventListener("DOMContentLoaded", async function() {
             enforceLoginPage();
             return;
         }
-        await runAppInit();
+        const me = await r.json().catch(function () { return {}; });
+        await runAppInit(me.user_id);
     } catch (e) {
         console.warn("Auth check failed", e);
         enforceLoginPage();

@@ -20,6 +20,18 @@
 - **离线优先**：IndexedDB 本地存储 + Service Worker 离线支持
 - **生产部署**：基于 gevent + nginx 的高性能部署
 
+### 前端多账号与「云端为准」（2026-03）
+
+同一浏览器切换账号时，本地缓存必须与账号对应，且以服务器数据为权威来源。
+
+| 机制 | 说明 |
+|------|------|
+| **按用户隔离的本地存储** | IndexedDB 库名 `chickennoteLM__{user_id}`；`localStorage` 使用 `chickennotelm_notes_events__{user_id}`、`chickennotelm_last_sync_at__{user_id}`、`chickennotelm_settings__{user_id}` 等后缀，避免账号 A 的缓存被账号 B 读到。 |
+| **登录后云端为准** | `applyCloudAuthorityOnLogin()`：登录成功后并行请求 `/api/notes` 与 `/api/events`。若两者均成功且**云端笔记与事件均为空**，则清空当前账号在本机的 IndexedDB（含同步队列）、对应 `localStorage` 键，并清空界面状态——**即使本地曾有旧缓存也会清除**。若云端有数据，则先清空本地库再写入云端快照，避免脏同步队列误推到错误账号。 |
+| **离线回退** | 仅当上述 API 因网络或 HTTP 错误失败时，才回退为 `loadDataFromLocalStorage()`；此时仍可使用本地缓存。演示用示例笔记仅在「未走通云端权威且最终仍无笔记」时注入；云端已确认空账号时**不会**自动注入演示笔记。 |
+
+> **说明**：若某账号曾在旧版本下被误写入他人数据，需在服务器上手动清理该用户目录（如 `notefile/{user_id}/`）。浏览器中旧的未带 `__{user_id}` 后缀的全局 key / 旧库名 `chickennoteLM` 可在开发者工具中手动删除，减少干扰。
+
 ---
 
 ## 技术架构
@@ -227,10 +239,10 @@ production_server.py          # 生产环境启动脚本（gevent + WebSocket）
 index.html                    # 前端主页面（单页应用）
 
 js/                           # 前端 JavaScript 模块
-  ├── main.js                 # 应用入口，登录鉴权，初始化
-  ├── state.js                # 全局状态管理（笔记、事件、聊天、UI）
-  ├── db.js                   # IndexedDB 本地存储封装
-  ├── data-service.js         # 数据服务层（本地+远程同步）
+  ├── main.js                 # 应用入口，登录鉴权，初始化（含云端为准流程）
+  ├── state.js                # 全局状态、持久化、applyCloudAuthorityOnLogin
+  ├── db.js                   # IndexedDB（按用户库名 initForUser）
+  ├── data-service.js         # 数据服务层（按用户的 last_sync_at、pull/push）
   ├── notes.js                # 笔记功能（CRUD、列表、编辑器）
   ├── chat.js                 # AI 对话（会话管理、消息、WebSocket）
   ├── events.js               # 事件提取与管理
@@ -238,7 +250,7 @@ js/                           # 前端 JavaScript 模块
   ├── export.js               # 数据导出（JSON/Markdown）
   ├── paste-image.js          # 图片粘贴/拖拽上传
   ├── ai-format.js            # AI 格式化（文本转 Markdown）
-  ├── settings.js             # 设置面板
+  ├── settings.js             # 设置面板（按用户 localStorage）
   └── ui.js                   # UI 工具函数
 
 sw.js                         # Service Worker（离线缓存 v9）

@@ -3,8 +3,14 @@
  * Provides offline-first data storage with sync capabilities
  */
 
-const DB_NAME = 'chickennoteLM';
+/** 未登录前不使用；登录后为 chickennoteLM__{userId}，与账号隔离 */
+const DB_NAME_PREFIX = 'chickennoteLM__';
 const DB_VERSION = 1;
+
+function sanitizeUserIdForStorage(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return String(raw).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 64) || '';
+}
 const STORES = {
   NOTES: 'notes',
   SYNC_QUEUE: 'sync_queue',
@@ -15,6 +21,7 @@ const STORES = {
 class IndexedDBManager {
   constructor() {
     this.db = null;
+    this._openedForUser = null;
     this.deviceId = this.getOrCreateDeviceId();
   }
 
@@ -27,9 +34,28 @@ class IndexedDBManager {
     return deviceId;
   }
 
-  async init() {
+  /**
+   * 按登录用户打开独立 IndexedDB，避免多账号共用一份本地数据
+   */
+  async initForUser(userId) {
+    const safe = sanitizeUserIdForStorage(userId);
+    if (!safe) {
+      return Promise.reject(new Error('[IndexedDB] initForUser: invalid userId'));
+    }
+    if (this.db && this._openedForUser === safe) {
+      return this.db;
+    }
+    if (this.db) {
+      try {
+        this.db.close();
+      } catch (e) { /* ignore */ }
+      this.db = null;
+    }
+    this._openedForUser = safe;
+    const dbName = DB_NAME_PREFIX + safe;
+
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      const request = indexedDB.open(dbName, DB_VERSION);
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
@@ -53,21 +79,28 @@ class IndexedDBManager {
         }
 
         if (!db.objectStoreNames.contains(STORES.CHUNKS)) {
-          const chunksStore = db.createObjectStore(STORES.CHUNKS, { keyPath: 'chunk_key' });
+          db.createObjectStore(STORES.CHUNKS, { keyPath: 'chunk_key' });
         }
       };
 
       request.onsuccess = (event) => {
         this.db = event.target.result;
-        console.log('[IndexedDB] Database initialized');
+        console.log('[IndexedDB] Database initialized for user:', safe);
         resolve(this.db);
       };
 
       request.onerror = (event) => {
         console.error('[IndexedDB] Error opening database:', event.target.error);
+        this._openedForUser = null;
         reject(event.target.error);
       };
     });
+  }
+
+  /** @deprecated 请使用 initForUser，与账号绑定 */
+  async init() {
+    console.warn('[IndexedDB] init() is deprecated; use initForUser(userId) after login');
+    return this.initForUser('legacy_default');
   }
 
   async addNote(note) {
@@ -298,12 +331,7 @@ class IndexedDBManager {
 }
 
 const dbManager = new IndexedDBManager();
-
-if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
-    dbManager.init().catch(console.error);
-  });
-}
+// 不在此处自动 open：须在登录成功后调用 dbManager.initForUser(userId)
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { IndexedDBManager, dbManager };
