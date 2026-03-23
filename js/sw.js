@@ -1,5 +1,6 @@
 /**
  * Service Worker - 离线缓存支持
+ * （与站点根目录 /sw.js 保持一致；当前构建仅注册 /sw.js）
  */
 
 const CACHE_NAME = 'chickennoteLM-v10';
@@ -152,7 +153,6 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncNotes() {
-  // 通知所有客户端进行同步
   const clients = await self.clients.matchAll();
   clients.forEach((client) => {
     client.postMessage({ type: 'SYNC_NOTES' });

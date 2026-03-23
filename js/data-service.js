@@ -184,6 +184,7 @@ class DataService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify({
           device_id: this.db.deviceId,
           last_sync_at: lastSyncAt,
@@ -282,6 +283,7 @@ class DataService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        cache: 'no-store',
         body: JSON.stringify({
           device_id: this.db.deviceId,
           changes: changes

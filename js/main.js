@@ -35,7 +35,7 @@ async function runAppInit(userId) {
     let uid = (userId && String(userId).trim()) || "";
     if (!uid) {
         try {
-            const me = await fetch("/api/auth/me", { credentials: "include" });
+            const me = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
             if (me.ok) {
                 const j = await me.json();
                 uid = (j && j.user_id) || "";
@@ -143,7 +143,7 @@ window.handleLogout = async function() {
 
 document.addEventListener("DOMContentLoaded", async function() {
     try {
-        const r = await fetch("/api/auth/me", { credentials: "include" });
+        const r = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
         if (r.status === 401) {
             enforceLoginPage();
             return;

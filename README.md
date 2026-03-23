@@ -30,6 +30,18 @@
 | **登录后云端为准** | `applyCloudAuthorityOnLogin()`：登录成功后并行请求 `/api/notes` 与 `/api/events`。若两者均成功且**云端笔记与事件均为空**，则清空当前账号在本机的 IndexedDB（含同步队列）、对应 `localStorage` 键，并清空界面状态——**即使本地曾有旧缓存也会清除**。若云端有数据，则先清空本地库再写入云端快照，避免脏同步队列误推到错误账号。 |
 | **离线回退** | 仅当上述 API 因网络或 HTTP 错误失败时，才回退为 `loadDataFromLocalStorage()`；此时仍可使用本地缓存。演示用示例笔记仅在「未走通云端权威且最终仍无笔记」时注入；云端已确认空账号时**不会**自动注入演示笔记。 |
 
+### 刷新后仍像「旧缓存」的防护（2026-03）
+
+此前出现过：会话内「云端为准」正常，但**整页刷新**后又像回到浏览器旧数据。常见原因有两类：（1）Service Worker 对入口页与 JS **缓存优先**，刷新仍执行旧版脚本；（2）浏览器对 GET API **HTTP 缓存**命中旧 JSON，云端权威读到的不是最新服务端状态。当前已做如下加固：
+
+| 层级 | 说明 |
+|------|------|
+| **Service Worker** | 缓存版本 `chickennoteLM-v10`。对**文档导航**、`/`、`/index.html`、路径含 **`/js/`** 的请求采用 **网络优先**，成功后再写入 Cache Storage；离线时再回退缓存。其余静态资源仍可缓存优先。 |
+| **前端 fetch** | `applyCloudAuthorityOnLogin`、`loadDataFromServerIfEmpty` 中的 `/api/notes`、`/api/events`，以及 `main.js` 的 `/api/auth/me`、`data-service.js` 的 `/api/sync/pull`与`push`，均带 **`cache: 'no-store'`**，避免磁盘缓存干扰。 |
+| **后端响应头** | `chickennotelm_server.py` 的 `after_request`：凡 **`/api/*`** 响应附加 **`Cache-Control: no-store`**（及 `Pragma: no-cache`），降低中间层与浏览器误缓存 API 的概率。 |
+
+部署新版本后建议用户**硬刷新一次**或新开标签页，以便安装新版 `sw.js`。
+
 > **说明**：若某账号曾在旧版本下被误写入他人数据，需在服务器上手动清理该用户目录（如 `notefile/{user_id}/`）。浏览器中旧的未带 `__{user_id}` 后缀的全局 key / 旧库名 `chickennoteLM` 可在开发者工具中手动删除，减少干扰。
 
 ---
@@ -253,7 +265,8 @@ js/                           # 前端 JavaScript 模块
   ├── settings.js             # 设置面板（按用户 localStorage）
   └── ui.js                   # UI 工具函数
 
-sw.js                         # Service Worker（离线缓存 v9）
+sw.js                         # Service Worker（离线缓存 v10；入口与 /js/ 网络优先）
+js/sw.js                      # 与根目录 sw.js 同步的副本（便于对照；站点仅注册 /sw.js）
 
 FEATURE_LIST.md               # 功能清单（本文档）
 ```

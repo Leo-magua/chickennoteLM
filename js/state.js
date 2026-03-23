@@ -177,8 +177,8 @@ window.applyCloudAuthorityOnLogin = async function() {
     let eventsRes;
     try {
         [notesRes, eventsRes] = await Promise.all([
-            fetch('/api/notes', { credentials: 'include' }),
-            fetch('/api/events', { credentials: 'include' })
+            fetch('/api/notes', { credentials: 'include', cache: 'no-store' }),
+            fetch('/api/events', { credentials: 'include', cache: 'no-store' })
         ]);
     } catch (e) {
         console.warn('[CloudAuthority] 网络异常，回退本地缓存', e);
@@ -326,7 +326,7 @@ window.loadDataFromLocalStorage = async function() {
 window.loadDataFromServerIfEmpty = function() {
     if (state.notes.length > 0) return Promise.resolve();
     var userLsKey = typeof window.getNotesEventsStorageKey === 'function' ? window.getNotesEventsStorageKey() : null;
-    return fetch('/api/notes', { credentials: 'include' })
+    return fetch('/api/notes', { credentials: 'include', cache: 'no-store' })
         .then(function(res) { return res.ok ? res.json() : null; })
         .then(function(data) {
             if (data && Array.isArray(data.notes) && data.notes.length > 0) {
@@ -338,7 +338,7 @@ window.loadDataFromServerIfEmpty = function() {
         })
         .catch(function() {})
         .then(function() {
-            return fetch('/api/events', { credentials: 'include' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+            return fetch('/api/events', { credentials: 'include', cache: 'no-store' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
                 if (data && Array.isArray(data.events) && data.events.length > 0) {
                     state.events = (data.events || []).map(function(e) { return Object.assign({}, e, { expanded: false }); });
                     var payload = { notes: state.notes, events: state.events.map(function(e) { return Object.assign({}, e, { expanded: false }); }) };
