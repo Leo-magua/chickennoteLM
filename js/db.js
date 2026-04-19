@@ -111,6 +111,7 @@ class IndexedDBManager {
       id: note.id || this.generateId(),
       title: note.title || '',
       content: note.content || '',
+      tags: note.tags || [],
       created_at: note.created_at || Date.now(),
       modified_at: note.modified_at || Date.now(),
       sync_status: 'pending',

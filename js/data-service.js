@@ -124,7 +124,8 @@ class DataService {
           title: n.title,
           content: n.content,
           updatedAt: new Date(n.modified_at).toISOString(),
-          createdAt: new Date(n.created_at).toISOString()
+          createdAt: new Date(n.created_at).toISOString(),
+          tags: n.tags || []
         }));
       }
     }
@@ -180,7 +181,7 @@ class DataService {
     const clientNoteIds = (await this.db.getAllNotes()).map(n => n.id);
     
     try {
-      const response = await fetch('/api/sync/pull', {
+      const response = await fetch(window.cnApi('api/sync/pull'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -207,7 +208,8 @@ class DataService {
             title: note.title,
             content: note.content,
             modified_at: note.modified_at,
-            sync_status: 'synced'
+            sync_status: 'synced',
+            tags: note.tags || []
           });
         } else {
           // 新建笔记
@@ -217,7 +219,8 @@ class DataService {
             content: note.content,
             modified_at: note.modified_at,
             created_at: note.modified_at,
-            sync_status: 'synced'
+            sync_status: 'synced',
+            tags: note.tags || []
           });
         }
         
@@ -274,12 +277,13 @@ class DataService {
         title: note.title,
         content: note.content,
         modified_at: note.modified_at,
-        updatedAt: new Date(note.modified_at).toISOString()
+        updatedAt: new Date(note.modified_at).toISOString(),
+        tags: note.tags || []
       });
     }
     
     try {
-      const response = await fetch('/api/sync/push', {
+      const response = await fetch(window.cnApi('api/sync/push'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -357,14 +361,16 @@ class DataService {
         id: note.id,
         title: note.title,
         content: note.content,
-        updatedAt: new Date(note.modified_at).toISOString()
+        updatedAt: new Date(note.modified_at).toISOString(),
+        tags: note.tags || []
       };
     } else {
       window.state.notes.push({
         id: note.id,
         title: note.title,
         content: note.content,
-        updatedAt: new Date(note.modified_at).toISOString()
+        updatedAt: new Date(note.modified_at).toISOString(),
+        tags: note.tags || []
       });
     }
     
@@ -391,7 +397,7 @@ class DataService {
    */
   async getSyncStatus() {
     try {
-      const response = await fetch(`/api/sync/status?device_id=${this.db?.deviceId || 'default'}`, { credentials: 'include' });
+      const response = await fetch(window.cnApi(`api/sync/status?device_id=${this.db?.deviceId || 'default'}`), { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to get sync status');
       return await response.json();
     } catch (e) {

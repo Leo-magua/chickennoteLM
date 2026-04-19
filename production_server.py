@@ -24,8 +24,9 @@ import chickennotelm_server
 
 app = chickennotelm_server.app
 
-# Production: bind to 0.0.0.0
-server = WSGIServer(("0.0.0.0", 5002), app, handler_class=WebSocketHandler)
-print("[ChickenNoteLM] Production server running on http://0.0.0.0:5002")
-print("[ChickenNoteLM] API: http://0.0.0.0:5002/api/")
+# Production: bind to 0.0.0.0 (port from PORT env var, fallback 5002)
+port = int(os.environ.get('PORT', 5002))
+server = WSGIServer(("0.0.0.0", port), app, handler_class=WebSocketHandler)
+print("[ChickenNoteLM] Production server running on http://0.0.0.0:" + str(port))
+print("[ChickenNoteLM] API: http://0.0.0.0:" + str(port) + "/api/")
 server.serve_forever()

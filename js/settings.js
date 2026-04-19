@@ -4,6 +4,8 @@ function toggleSettings() {
     const modal = document.getElementById('settingsModal');
     const promptEventEl = document.getElementById('settingPromptEvent');
     const promptMarkdownEl = document.getElementById('settingPromptAIFormat');
+    const promptTagEl = document.getElementById('settingPromptTagExtract');
+    const autoTagEl = document.getElementById('settingAutoTag');
     if (modal.classList.contains('hidden')) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -18,6 +20,12 @@ function toggleSettings() {
         if (promptMarkdownEl) {
             promptMarkdownEl.value = state.settings.markdownConvertPrompt || state.settings.aiFormatPrompt || '';
         }
+        if (promptTagEl) {
+            promptTagEl.value = state.settings.tagExtractPrompt || '';
+        }
+        if (autoTagEl) {
+            autoTagEl.checked = state.settings.autoTagEnabled || false;
+        }
     } else {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
@@ -31,6 +39,13 @@ function saveSettings() {
     state.settings.systemPromptChat = document.getElementById('settingPromptChat').value;
     state.settings.systemPromptEventExtract = document.getElementById('settingPromptEvent').value;
     state.settings.markdownConvertPrompt = document.getElementById('settingPromptAIFormat').value;
+    
+    // 标签相关设置
+    const promptTagEl = document.getElementById('settingPromptTagExtract');
+    if (promptTagEl) {
+        state.settings.tagExtractPrompt = promptTagEl.value;
+    }
+    
     // 兼容旧字段
     state.settings.systemPromptEvent = state.settings.systemPromptEventExtract;
     state.settings.aiFormatPrompt = state.settings.markdownConvertPrompt;
@@ -39,6 +54,17 @@ function saveSettings() {
     if (sk) localStorage.setItem(sk, JSON.stringify(state.settings));
     toggleSettings();
     showToast('配置已更新');
+}
+
+/**
+ * 从设置面板切换自动标签开关
+ */
+function toggleAutoTagFromSettings() {
+    const autoTagEl = document.getElementById('settingAutoTag');
+    if (autoTagEl) {
+        state.autoTagEnabled = autoTagEl.checked;
+        state.settings.autoTagEnabled = autoTagEl.checked;
+    }
 }
 
 function loadSettings() {
@@ -80,3 +106,4 @@ function loadSettings() {
 window.toggleSettings = toggleSettings;
 window.saveSettings = saveSettings;
 window.loadSettings = loadSettings;
+window.toggleAutoTagFromSettings = toggleAutoTagFromSettings;

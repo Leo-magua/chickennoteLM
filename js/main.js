@@ -1,7 +1,8 @@
 // js/main.js - 应用入口（支持 IndexedDB 离线优先 + 登录鉴权）
 
 if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js")
+    var swPath = typeof window.cnApi === "function" ? window.cnApi("sw.js") : "/sw.js";
+    navigator.serviceWorker.register(swPath)
         .then((reg) => console.log("[SW] Registered"))
         .catch((err) => console.log("[SW] Failed:", err));
     navigator.serviceWorker.addEventListener("message", (event) => {
@@ -35,7 +36,7 @@ async function runAppInit(userId) {
     let uid = (userId && String(userId).trim()) || "";
     if (!uid) {
         try {
-            const me = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
+            const me = await fetch(window.cnApi("api/auth/me"), { credentials: "include", cache: "no-store" });
             if (me.ok) {
                 const j = await me.json();
                 uid = (j && j.user_id) || "";
@@ -54,6 +55,12 @@ async function runAppInit(userId) {
     }
 
     loadSettings();
+    
+    // 加载自动标签设置
+    if (state.settings.autoTagEnabled !== undefined) {
+        state.autoTagEnabled = state.settings.autoTagEnabled;
+    }
+    
     if (window.dataService) await window.dataService.init();
 
     window.__lastCloudAuth = null;
@@ -72,6 +79,7 @@ async function runAppInit(userId) {
     (function ensureNotes() {
         if (state.notes.length > 0) {
             renderNoteList();
+            if (window.renderNoteTagFilter) window.renderNoteTagFilter();
             if (state.currentNoteId) loadNote(state.currentNoteId);
             return;
         }
@@ -93,6 +101,7 @@ async function runAppInit(userId) {
                 }
             }
             renderNoteList();
+            if (window.renderNoteTagFilter) window.renderNoteTagFilter();
             if (state.currentNoteId) loadNote(state.currentNoteId);
         });
     })();
@@ -112,6 +121,9 @@ async function runAppInit(userId) {
         }
     });
     if (typeof initPreviewEditable === "function") initPreviewEditable();
+    
+    // 初始化问候功能
+    if (typeof initGreeting === "function") initGreeting();
 }
 
 window.handleLoginSubmit = async function(ev) {
@@ -119,7 +131,7 @@ window.handleLoginSubmit = async function(ev) {
     const username = (document.getElementById("loginUsername") && document.getElementById("loginUsername").value || "").trim();
     if (!username) return false;
     try {
-        const r = await fetch("/api/auth/login", {
+        const r = await fetch(window.cnApi("api/auth/login"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -137,13 +149,13 @@ window.handleLoginSubmit = async function(ev) {
 };
 
 window.handleLogout = async function() {
-    try { await fetch("/api/auth/logout", { method: "POST", credentials: "include" }); } catch (e) {}
+    try { await fetch(window.cnApi("api/auth/logout"), { method: "POST", credentials: "include" }); } catch (e) {}
     location.reload();
 };
 
 document.addEventListener("DOMContentLoaded", async function() {
     try {
-        const r = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
+        const r = await fetch(window.cnApi("api/auth/me"), { credentials: "include", cache: "no-store" });
         if (r.status === 401) {
             enforceLoginPage();
             return;

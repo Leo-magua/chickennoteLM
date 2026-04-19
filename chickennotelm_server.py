@@ -181,6 +181,25 @@ def require_auth(f):
     return wrapped
 
 
+@app.route("/")
+def index():
+    """根路由 - 返回前端页面"""
+    import os
+    index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'index.html')
+    try:
+        with open(index_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "<h1>ChickenNoteLM</h1><p>index.html not found</p>", 404
+
+@app.route("/js/<path:filename>")
+def serve_js(filename):
+    """服务 JS 文件"""
+    import os
+    from flask import send_from_directory
+    js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'js')
+    return send_from_directory(js_dir, filename)
+
 @app.route("/api/auth/me", methods=["GET"])
 def auth_me():
     user = get_current_user()
@@ -241,7 +260,15 @@ def upload_image():
 
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    # 带 credentials 的跨域请求不能使用 ACAO: *；回显 Origin 并允许凭据，避免登录后 Cookie 无法随 API 提交
+    origin = request.headers.get("Origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        vary = response.headers.get("Vary")
+        response.headers["Vary"] = (vary + ", Origin") if vary else "Origin"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     # 避免浏览器把笔记/事件等 GET API 缓存在磁盘，刷新后误用旧 JSON
@@ -261,13 +288,23 @@ def get_notes():
     for note_id, meta in index_map.items():
         base = meta.get("base") or f"{slugify(meta.get('title', ''))}_{note_id}"
         md_path = note_dir / f"{base}.md"
+        meta_path = note_dir / f"{base}.json"
         content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+        # 读取标签信息
+        tags = []
+        if meta_path.exists():
+            try:
+                meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
+                tags = meta_data.get("tags", [])
+            except Exception:
+                pass
         notes.append(
             {
                 "id": note_id,
                 "title": meta.get("title", ""),
                 "content": content,
                 "updatedAt": meta.get("updatedAt", now_iso()),
+                "tags": tags,
             }
         )
     return jsonify({"notes": notes})
@@ -295,13 +332,14 @@ def sync_notes_events():
         title = note.get("title") or ""
         content = note.get("content") or ""
         updated_at = note.get("updatedAt") or now_iso()
+        tags = note.get("tags") or []
 
         base = f"{slugify(title)}_{note_id}"
         md_path = note_dir / f"{base}.md"
         meta_path = note_dir / f"{base}.json"
 
         md_path.write_text(content, encoding="utf-8")
-        meta = {"id": note_id, "title": title, "updatedAt": updated_at}
+        meta = {"id": note_id, "title": title, "updatedAt": updated_at, "tags": tags}
         meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
         old_base = (old_index.get(note_id) or {}).get("base")
@@ -338,6 +376,198 @@ def sync_notes_events():
 def openclaw_health():
     """用于在浏览器中确认本服务已包含 OpenClaw 代理（避免 404 时误判为缺路由）"""
     return jsonify({"ok": True, "openclaw_proxy": True})
+
+
+def get_all_existing_tags(note_dir: Path) -> list:
+    """
+    从所有笔记的元数据中提取已有的标签列表（去重）
+    返回: 按字母排序的标签列表
+    """
+    existing_tags = set()
+    for meta_path in note_dir.glob("*.json"):
+        if meta_path.name == NOTE_INDEX_FILE:
+            continue
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            tags = meta.get("tags", [])
+            if isinstance(tags, list):
+                for tag in tags:
+                    if tag and isinstance(tag, str):
+                        existing_tags.add(tag.strip())
+        except Exception:
+            continue
+    return sorted(list(existing_tags))
+
+
+@app.route("/api/notes/tags/extract", methods=["POST"])
+@require_auth
+def extract_note_tags():
+    """
+    调用 AI API 从笔记内容中提取标签
+    请求体: {"title": "笔记标题", "content": "笔记内容", "apiKey": "...", "baseUrl": "...", "model": "...", "prompt": "...", "existingTags": [...]}
+    返回: {"tags": ["标签1", "标签2", ...]}
+    """
+    data = request.get_json(silent=True) or {}
+    title = data.get("title", "")
+    content = data.get("content", "")
+    api_key = data.get("apiKey", "")
+    base_url = (data.get("baseUrl") or "https://api.openai.com/v1").rstrip("/")
+    model = data.get("model") or "gpt-3.5-turbo"
+    custom_prompt = data.get("prompt", "")
+    
+    # 从前端传入的已识别标签（用于批量识别时保持标签一致性）
+    client_existing_tags = data.get("existingTags", [])
+    
+    if not api_key:
+        return jsonify({"error": "apiKey required"}), 400
+    if not content.strip():
+        return jsonify({"tags": []})
+    
+    # 获取已有的标签列表（用于提示AI优先复用）
+    note_dir, _, _, _ = get_user_dirs(get_current_user())
+    file_tags = get_all_existing_tags(note_dir)
+    
+    # 合并文件中的标签和前端传入的标签（去重）
+    existing_tags = list(set(file_tags + client_existing_tags))
+    existing_tags.sort()
+    
+    # 构建提示词（使用自定义提示词或默认提示词）
+    if custom_prompt and custom_prompt.strip():
+        system_prompt = custom_prompt
+    else:
+        # 构建已有标签的提示文本
+        existing_tags_prompt = ""
+        if existing_tags:
+            existing_tags_prompt = f"""
+
+【已有标签参考】
+系统中已有的标签（按字母排序）：{', '.join(existing_tags)}
+
+重要提示：
+- 优先从上述已有标签中选择最匹配的标签
+- 只有当已有标签完全不适用时，才创建新标签
+- 这样可以保持标签体系的一致性，避免重复或近似的标签"""
+        
+        system_prompt = f"""你是一个智能标签提取助手。请从给定的笔记标题和内容中提取3-8个关键词标签。
+
+要求：
+1. 标签应该准确反映笔记的主题、类别或关键概念
+2. 标签应该简洁，通常是1-4个中文词或英文单词
+3. 优先提取：主题分类（如"技术","工作","学习"）、具体技术（如"Python","React"）、场景（如"会议","待办","想法"）
+4. 只返回JSON格式：{{"tags": ["标签1", "标签2", ...]}}
+5. 不要包含任何解释性文字，只返回JSON{existing_tags_prompt}"""
+
+    user_content = f"标题：{title}\n\n内容：\n{content[:2000]}"  # 限制内容长度
+    
+    try:
+        req = Request(
+            f"{base_url}/chat/completions",
+            data=json.dumps({
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                "temperature": 0.3
+            }).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            method="POST"
+        )
+        
+        with urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            reply = result["choices"][0]["message"]["content"]
+            
+            # 解析JSON
+            try:
+                # 查找JSON块
+                json_match = re.search(r'\{[\s\S]*"tags"[\s\S]*\}', reply)
+                if json_match:
+                    parsed = json.loads(json_match.group())
+                    tags = parsed.get("tags", [])
+                else:
+                    # 尝试直接解析
+                    parsed = json.loads(reply)
+                    tags = parsed.get("tags", [])
+                
+                # 清理标签
+                tags = [str(t).strip() for t in tags if t and str(t).strip()]
+                tags = tags[:10]  # 最多10个标签
+                
+                # 与已有标签进行匹配和去重
+                # 优先使用已有的标签（避免创建重复或近似的标签）
+                normalized_existing = {tag.lower(): tag for tag in existing_tags}
+                final_tags = []
+                for tag in tags:
+                    tag_lower = tag.lower()
+                    # 检查是否有完全匹配或近似的已有标签
+                    matched = False
+                    for existing_lower, existing_original in normalized_existing.items():
+                        if tag_lower == existing_lower or tag_lower in existing_lower or existing_lower in tag_lower:
+                            if existing_original not in final_tags:
+                                final_tags.append(existing_original)
+                            matched = True
+                            break
+                    if not matched:
+                        # 没有匹配到已有标签，使用新标签
+                        if tag not in final_tags:
+                            final_tags.append(tag)
+                
+                return jsonify({"tags": final_tags})
+            except json.JSONDecodeError:
+                # 如果解析失败，尝试从文本中提取
+                lines = reply.split('\n')
+                tags = []
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('{') and not line.startswith('}'):
+                        # 移除常见的列表标记
+                        tag = re.sub(r'^[-*•\d.\s"\']+', '', line).strip()
+                        if tag and len(tag) < 20:
+                            tags.append(tag)
+                tags = tags[:10]
+                
+                # 与已有标签进行匹配和去重
+                normalized_existing = {tag.lower(): tag for tag in existing_tags}
+                final_tags = []
+                for tag in tags:
+                    tag_lower = tag.lower()
+                    matched = False
+                    for existing_lower, existing_original in normalized_existing.items():
+                        if tag_lower == existing_lower or tag_lower in existing_lower or existing_lower in tag_lower:
+                            if existing_original not in final_tags:
+                                final_tags.append(existing_original)
+                            matched = True
+                            break
+                    if not matched:
+                        if tag not in final_tags:
+                            final_tags.append(tag)
+                
+                return jsonify({"tags": final_tags})
+                
+    except HTTPError as e:
+        try:
+            err_body = e.read().decode("utf-8")
+            return jsonify({"error": err_body}), e.code
+        except Exception:
+            return jsonify({"error": str(e)}), e.code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/notes/tags", methods=["GET"])
+@require_auth
+def get_all_tags():
+    """
+    获取所有已有的标签列表（去重）
+    返回: {"tags": ["标签1", "标签2", ...]}
+    """
+    note_dir, _, _, _ = get_user_dirs(get_current_user())
+    existing_tags = get_all_existing_tags(note_dir)
+    return jsonify({"tags": existing_tags})
 
 
 @app.route("/api/openclaw/chat", methods=["POST", "OPTIONS"])
@@ -705,7 +935,17 @@ def sync_pull():
         if modified_at > last_sync_at:
             base = meta.get("base") or f"{slugify(meta.get('title', ''))}_{note_id}"
             md_path = note_dir / f"{base}.md"
+            meta_path = note_dir / f"{base}.json"
             content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+            
+            # 读取标签信息
+            tags = []
+            if meta_path.exists():
+                try:
+                    meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
+                    tags = meta_data.get("tags", [])
+                except Exception:
+                    pass
 
             updated_notes.append({
                 "id": note_id,
@@ -713,7 +953,8 @@ def sync_pull():
                 "content": content,
                 "updatedAt": meta.get("updatedAt", now_iso()),
                 "modified_at": modified_at,
-                "action": "update"
+                "action": "update",
+                "tags": tags
             })
     
     # 检测服务器上已删除的笔记（在客户端存在但在服务器不存在）
@@ -796,7 +1037,7 @@ def sync_push():
                 meta_path = note_dir / f"{base}.json"
                 
                 md_path.write_text(content, encoding="utf-8")
-                meta = {"id": note_id, "title": title, "updatedAt": updated_at}
+                meta = {"id": note_id, "title": title, "updatedAt": updated_at, "tags": change.get("tags", [])}
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
                 old_base = current_meta.get("base")
@@ -874,7 +1115,7 @@ def sync_resolve_conflict():
                 meta_path = note_dir / f"{base}.json"
                 
                 md_path.write_text(content, encoding="utf-8")
-                meta = {"id": note_id, "title": title, "updatedAt": updated_at}
+                meta = {"id": note_id, "title": title, "updatedAt": updated_at, "tags": resolution.get("tags", [])}
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
                 
                 results.append({"id": note_id, "resolution": "client", "success": True})
@@ -894,7 +1135,7 @@ def sync_resolve_conflict():
                 meta_path = note_dir / f"{base}.json"
                 
                 md_path.write_text(content, encoding="utf-8")
-                meta = {"id": note_id, "title": title, "updatedAt": updated_at}
+                meta = {"id": note_id, "title": title, "updatedAt": updated_at, "tags": resolution.get("tags", [])}
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
                 
                 results.append({"id": note_id, "resolution": "merge", "success": True})

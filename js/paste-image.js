@@ -226,7 +226,7 @@
         formData.append('image', imageData.blob, `paste-${Date.now()}.${ext}`);
         formData.append('note_id', getCurrentNoteId());
 
-        const response = await fetch('/api/uploads/image', {
+        const response = await fetch(window.cnApi('api/uploads/image'), {
             method: 'POST',
             credentials: 'include',
             body: formData

@@ -5,15 +5,39 @@ function renderNoteList() {
     const batchActions = document.getElementById('batchActions');
     batchActions.classList.toggle('hidden', state.selectedNotes.size === 0);
 
-    container.innerHTML = state.notes.map(note => {
+    // 根据标签筛选笔记
+    let notesToRender = state.notes;
+    if (window.state.activeNoteTagFilter) {
+        notesToRender = notesToRender.filter(note => 
+            note.tags && note.tags.includes(window.state.activeNoteTagFilter)
+        );
+    }
+
+    if (notesToRender.length === 0) {
+        if (state.notes.length === 0) {
+            container.innerHTML = `<div class="text-center text-slate-400 text-sm py-8">暂无笔记<br><span class="text-xs">点击 + 新建笔记</span></div>`;
+        } else if (window.state.activeNoteTagFilter) {
+            container.innerHTML = `<div class="text-center text-slate-400 text-sm py-8">没有 "${window.state.activeNoteTagFilter}" 标签的笔记<br><button onclick="filterNotesByTag(null)" class="text-blue-500 hover:underline text-xs mt-1">显示全部</button></div>`;
+        }
+        return;
+    }
+
+    container.innerHTML = notesToRender.map(note => {
         const isSelected = state.selectedNotes.has(note.id);
         const isActive = note.id === state.currentNoteId;
         const date = new Date(note.updatedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+        
+        // 渲染标签
+        const tagsHtml = (note.tags && note.tags.length > 0) 
+            ? `<div class="flex flex-wrap gap-1 mt-1.5">${note.tags.map(tag => 
+                `<span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded-full hover:bg-blue-100 hover:text-blue-600 transition-colors" onclick="event.stopPropagation(); filterNotesByTag('${escapeHtml(tag)}')">#${escapeHtml(tag)}</span>`
+            ).join('')}</div>`
+            : '';
 
         return `
-            <div class="group relative flex items-center gap-2 p-2.5 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-blue-50 border border-blue-100' : 'hover:bg-slate-50 border border-transparent'} ${isSelected ? 'ring-2 ring-blue-400' : ''}"
+            <div class="group relative flex items-start gap-2 p-2.5 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-blue-50 border border-blue-100' : 'hover:bg-slate-50 border border-transparent'} ${isSelected ? 'ring-2 ring-blue-400' : ''}"
                  onclick="handleNoteClick('${note.id}', event)">
-                <label class="checkbox-wrapper flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                <label class="checkbox-wrapper flex items-center cursor-pointer mt-0.5" onclick="event.stopPropagation()">
                     <input type="checkbox" class="hidden" ${isSelected ? 'checked' : ''} onchange="toggleNoteSelection('${note.id}')">
                     <div class="w-4 h-4 border-2 border-slate-300 rounded flex items-center justify-center transition-colors hover:border-blue-400">
                         <svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
@@ -25,10 +49,22 @@ function renderNoteList() {
                         <span>${date}</span>
                         <span class="truncate opacity-70">${note.content.substring(0, 20).replace(/#|\*|\[|\]/g, '')}...</span>
                     </div>
+                    ${tagsHtml}
                 </div>
             </div>
         `;
     }).join('');
+}
+
+// HTML 转义辅助函数
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function handleNoteClick(id, event) {
@@ -60,6 +96,17 @@ function loadNote(id) {
     renderEditorView();
     renderNoteList();
     updateChatContextUI();
+    
+    // 渲染笔记标签
+    if (window.renderNoteTags) renderNoteTags();
+    
+    // 如果开启了自动标签识别且笔记没有标签，尝试自动提取
+    if (window.TagManager && window.TagManager.shouldAutoExtract(note)) {
+        // 延迟执行，避免影响加载速度
+        setTimeout(() => {
+            window.TagManager.tryAutoExtract(note.id);
+        }, 1000);
+    }
 }
 
 function createNewNote() {
@@ -128,6 +175,14 @@ function saveCurrentNoteContentOnly() {
         indicator.textContent = '已保存';
         indicator.style.opacity = '1';
         setTimeout(function () { indicator.style.opacity = '0'; }, 1500);
+    }
+    
+    // 如果开启了自动标签识别且笔记没有标签，尝试自动提取
+    if (window.TagManager && window.TagManager.shouldAutoExtract(note)) {
+        // 延迟执行，避免影响保存性能
+        setTimeout(function() {
+            window.TagManager.tryAutoExtract(note.id);
+        }, 500);
     }
 }
 

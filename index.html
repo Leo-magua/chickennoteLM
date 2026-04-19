@@ -166,6 +166,20 @@
                 </button>
             </div>
         </div>
+        <!-- Tag Filter Bar -->
+        <div id="noteTagFilterBar" class="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between min-h-[44px]">
+            <div id="noteTagsContainer" class="flex gap-1.5 overflow-x-auto flex-1 mr-2 scrollbar-hide items-center">
+                <span class="text-xs text-slate-400">加载中...</span>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+                <button onclick="TagManager.extractTagsForCurrentNote()" class="p-1.5 hover:bg-blue-100 text-slate-500 hover:text-blue-600 rounded-lg transition-colors" title="识别当前笔记标签">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                </button>
+                <button onclick="TagManager.toggleAutoTag()" id="autoTagToggleBtn" class="p-1.5 hover:bg-blue-100 text-slate-500 hover:text-blue-600 rounded-lg transition-colors" title="自动标签识别">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </button>
+            </div>
+        </div>
         <!-- Note List -->
         <div id="noteListContainer" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
     </aside>
@@ -215,12 +229,6 @@
                 <button onclick="toggleSettings()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="系统配置">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 </button>
-                <button onclick="openClaudeGuide()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Claude Code 使用指南">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </button>
-                <button onclick="openInstallGuide()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="安装教程">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                </button>
                 <button onclick="handleLogout()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors" title="退出登录">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 </button>
@@ -229,6 +237,14 @@
 
         <!-- Editor Area -->
         <div class="flex-1 flex flex-col overflow-hidden relative">
+            <!-- Note Tags Bar -->
+            <div id="editorTagsBar" class="px-8 py-2 border-b border-slate-100 bg-white flex items-center gap-2 flex-wrap">
+                <div id="editorTagsList" class="flex flex-wrap gap-1.5 items-center flex-1"></div>
+                <button onclick="addTagToCurrentNote()" class="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-colors flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    添加标签
+                </button>
+            </div>
             <div class="flex-1 overflow-y-auto p-8 bg-white">
                 <textarea id="noteEditor"
                           class="w-full h-full resize-none border-0 focus:outline-none text-slate-700 leading-relaxed text-base editor-content mono bg-transparent"
@@ -405,6 +421,17 @@
                     <label class="text-sm font-medium text-slate-700 flex items-center gap-2">文本转 Markdown 提示词</label>
                     <textarea id="settingPromptAIFormat" rows="4" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none text-sm" placeholder="请将输入内容整理为结构化 Markdown..."></textarea>
                 </div>
+                <div class="space-y-1.5">
+                    <label class="text-sm font-medium text-slate-700 flex items-center gap-2">标签提取提示词</label>
+                    <textarea id="settingPromptTagExtract" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none text-sm" placeholder="请从笔记中提取关键词标签..."></textarea>
+                </div>
+                <div class="flex items-center gap-3 pt-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="settingAutoTag" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" onchange="toggleAutoTagFromSettings()">
+                        <span class="text-sm text-slate-700">开启自动标签识别</span>
+                    </label>
+                    <span class="text-xs text-slate-400">保存笔记时自动提取标签</span>
+                </div>
             </div>
             <div class="p-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
                 <button onclick="toggleSettings()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">取消</button>
@@ -419,125 +446,36 @@
         <span id="toastMessage">操作成功</span>
     </div>
 
+    <!-- API 根路径：子路径部署（如 /chickennoteLM）时避免相对 api/ 被解析到错误的 /api/ 导致 401/404 -->
+    <script>
+    (function () {
+        function computeApiRoot() {
+            var path = window.location.pathname || "/";
+            if (path === "/" || path === "") return "/";
+            if (path.endsWith("/")) return path;
+            if (/\.html?$/i.test(path)) return path.replace(/[^/]+$/, "");
+            return path + "/";
+        }
+        window.__cnApiRoot = computeApiRoot();
+        window.cnApi = function (rel) {
+            if (!rel) return window.__cnApiRoot;
+            return window.__cnApiRoot + String(rel).replace(/^\/+/, "");
+        };
+    })();
+    </script>
     <!-- 引入模块化JS文件 -->
     <script src="js/db.js"></script>
     <script src="js/data-service.js"></script>
     <script src="js/state.js"></script>
+    <script src="js/tags.js"></script>
     <script src="js/notes.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/events.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/settings.js"></script>
     <script src="js/ai-format.js"></script>
+    <script src="js/greeting.js"></script>
     <script src="js/main.js"></script>
     <script src="js/paste-image.js"></script>
-    <script>
-        // Claude Code 使用指南 - 帮助文档功能
-        async function openClaudeGuide() {
-            const guideId = 'CLAUDE_CODE_SETUP_GUIDE';
-            
-            // 检查是否已存在该笔记
-            const existingNote = state.notes.find(n => n.id === guideId);
-            
-            if (existingNote) {
-                // 直接加载已存在的笔记
-                loadNote(guideId);
-                showToast('已打开 Claude Code 使用指南');
-            } else {
-                // 尝试从服务器加载
-                try {
-                    showToast('正在加载使用指南...');
-                    const response = await fetch(`notefile/${state.currentUser}/${guideId}.md`);
-                    
-                    if (!response.ok) {
-                        throw new Error('文档不存在');
-                    }
-                    
-                    const content = await response.text();
-                    
-                    // 创建笔记对象
-                    const guideNote = {
-                        id: guideId,
-                        title: 'Claude Code 使用指南',
-                        content: content,
-                        timestamp: Date.now(),
-                        tags: ['claude', 'clash', '代理', '使用指南'],
-                        source: 'system'
-                    };
-                    
-                    // 添加到笔记列表
-                    state.notes.unshift(guideNote);
-                    
-                    // 保存到本地数据库
-                    if (window.notesDB) {
-                        await notesDB.saveNote(state.currentUser, guideNote);
-                    }
-                    
-                    // 刷新笔记列表
-                    renderNoteList();
-                    
-                    // 加载笔记
-                    loadNote(guideId);
-                    
-                    showToast('✅ 已加载 Claude Code 使用指南');
-                } catch (error) {
-                    console.error('加载使用指南失败:', error);
-                    showToast('❌ 加载使用指南失败，请刷新页面重试');
-                }
-            }
-        }
-        
-        // 导出到全局
-        window.openClaudeGuide = openClaudeGuide;
-        
-        // 安装指南功能
-        async function openInstallGuide() {
-            const guideId = 'CLAUDE_CODE_INSTALL_GUIDE';
-            
-            // 检查是否已存在该笔记
-            const existingNote = state.notes.find(n => n.id === guideId);
-            
-            if (existingNote) {
-                loadNote(guideId);
-                showToast('已打开安装指南');
-            } else {
-                try {
-                    showToast('正在加载安装指南...');
-                    const response = await fetch(`notefile/${state.currentUser}/${guideId}.md`);
-                    
-                    if (!response.ok) {
-                        throw new Error('文档不存在');
-                    }
-                    
-                    const content = await response.text();
-                    
-                    const guideNote = {
-                        id: guideId,
-                        title: 'Claude Code + Clash 云服务器安装指南',
-                        content: content,
-                        timestamp: Date.now(),
-                        tags: ['claude', 'clash', '安装', '教程', 'openrouter'],
-                        source: 'system'
-                    };
-                    
-                    state.notes.unshift(guideNote);
-                    
-                    if (window.notesDB) {
-                        await notesDB.saveNote(state.currentUser, guideNote);
-                    }
-                    
-                    renderNoteList();
-                    loadNote(guideId);
-                    
-                    showToast('✅ 已加载安装指南');
-                } catch (error) {
-                    console.error('加载安装指南失败:', error);
-                    showToast('❌ 加载安装指南失败');
-                }
-            }
-        }
-        
-        window.openInstallGuide = openInstallGuide;
-    </script>
 </body>
 </html>

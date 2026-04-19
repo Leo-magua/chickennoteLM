@@ -34,7 +34,9 @@ window.state = {
     events: [],
     eventSort: 'create_desc',
     activeTagFilter: null,
+    activeNoteTagFilter: null,  // 笔记标签筛选
     editorView: 'edit',
+    autoTagEnabled: false,  // 自动标签识别开关
     settings: {
         apiKey: '',
         baseUrl: 'https://api.openai.com/v1',
@@ -121,12 +123,18 @@ async function syncNotesAndEventsToServer(data) {
         const overlay = document.getElementById('loginOverlay');
         if (overlay && overlay.style.display !== 'none') return;
 
-        const response = await fetch('/api/sync/notes-events', {
+        // 确保笔记包含标签信息
+        const notesWithTags = (data.notes || []).map(note => ({
+            ...note,
+            tags: note.tags || []
+        }));
+
+        const response = await fetch(window.cnApi('api/sync/notes-events'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
-                notes: data.notes || [],
+                notes: notesWithTags,
                 events: data.events || []
             })
         });
@@ -177,8 +185,8 @@ window.applyCloudAuthorityOnLogin = async function() {
     let eventsRes;
     try {
         [notesRes, eventsRes] = await Promise.all([
-            fetch('/api/notes', { credentials: 'include', cache: 'no-store' }),
-            fetch('/api/events', { credentials: 'include', cache: 'no-store' })
+            fetch(window.cnApi('api/notes'), { credentials: 'include', cache: 'no-store' }),
+            fetch(window.cnApi('api/events'), { credentials: 'include', cache: 'no-store' })
         ]);
     } catch (e) {
         console.warn('[CloudAuthority] 网络异常，回退本地缓存', e);
@@ -326,7 +334,7 @@ window.loadDataFromLocalStorage = async function() {
 window.loadDataFromServerIfEmpty = function() {
     if (state.notes.length > 0) return Promise.resolve();
     var userLsKey = typeof window.getNotesEventsStorageKey === 'function' ? window.getNotesEventsStorageKey() : null;
-    return fetch('/api/notes', { credentials: 'include', cache: 'no-store' })
+    return fetch(window.cnApi('api/notes'), { credentials: 'include', cache: 'no-store' })
         .then(function(res) { return res.ok ? res.json() : null; })
         .then(function(data) {
             if (data && Array.isArray(data.notes) && data.notes.length > 0) {
@@ -338,7 +346,7 @@ window.loadDataFromServerIfEmpty = function() {
         })
         .catch(function() {})
         .then(function() {
-            return fetch('/api/events', { credentials: 'include', cache: 'no-store' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+            return fetch(window.cnApi('api/events'), { credentials: 'include', cache: 'no-store' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
                 if (data && Array.isArray(data.events) && data.events.length > 0) {
                     state.events = (data.events || []).map(function(e) { return Object.assign({}, e, { expanded: false }); });
                     var payload = { notes: state.notes, events: state.events.map(function(e) { return Object.assign({}, e, { expanded: false }); }) };

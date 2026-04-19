@@ -271,7 +271,7 @@ function renderMarkdown(text) {
 async function ensureCurrentChatSession() {
     if (state.currentChatId) return;
     try {
-        const res = await fetch('/api/chats', { method: 'GET', credentials: 'include' });
+        const res = await fetch(window.cnApi('api/chats'), { method: 'GET', credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
             state.chatSessions = data.chats || [];
@@ -288,11 +288,12 @@ async function ensureCurrentChatSession() {
 async function saveCurrentChatToServer() {
     if (!state.currentChatId) return;
     try {
-        await fetch(`/api/chats/${encodeURIComponent(state.currentChatId)}`, {
+        await fetch(window.cnApi(`api/chats/${encodeURIComponent(state.currentChatId)}`), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({
                 messages: state.currentChatMessages
             })
@@ -307,7 +308,7 @@ async function loadChatHistoryList() {
     const select = document.getElementById('chatSessionSelect');
     if (!select) return;
     try {
-        const res = await fetch('/api/chats', { method: 'GET', credentials: 'include' });
+        const res = await fetch(window.cnApi('api/chats'), { method: 'GET', credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         state.chatSessions = data.chats || [];
@@ -343,7 +344,7 @@ async function handleChatSessionChange(selectEl) {
     const chatId = selectEl.value;
     if (!chatId) return;
     try {
-        const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}`, { method: 'GET', credentials: 'include' });
+        const res = await fetch(window.cnApi(`api/chats/${encodeURIComponent(chatId)}`), { method: 'GET', credentials: 'include' });
         if (!res.ok) return;
         const chat = await res.json();
         state.currentChatId = chat.id;
@@ -374,11 +375,12 @@ async function createNewChatSession(withPrompt = true) {
         title = prompt('请输入新对话标题（可留空自动生成）：') || '';
     }
     try {
-        const res = await fetch('/api/chats', {
+        const res = await fetch(window.cnApi('api/chats'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({ title: title })
         });
         if (!res.ok) return;
