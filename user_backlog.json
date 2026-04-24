@@ -1,0 +1,232 @@
+{
+  "version": "1.0",
+  "created_at": "2026-04-10T19:00:00Z",
+  "updated_at": "2026-04-24T01:22:06.729Z",
+  "items": [
+    {
+      "id": "REQ1776993726729",
+      "title": "生产环境隔离",
+      "description": "先前让你修改本项目，结果把80端口的那个部署在生产环境的项目修改了，导致有些功能不可用，请确认并修复",
+      "category": "Bug",
+      "status": "New",
+      "created_at": "2026-04-24T01:22:06.729Z",
+      "updated_at": "2026-04-24T01:22:06.729Z"
+    },
+    {
+      "id": "REQ1776993475774",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:55.774Z",
+      "updated_at": "2026-04-24T01:17:55.774Z"
+    },
+    {
+      "id": "REQ1776993475694",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:55.694Z",
+      "updated_at": "2026-04-24T01:17:55.694Z"
+    },
+    {
+      "id": "REQ1776993475609",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:55.609Z",
+      "updated_at": "2026-04-24T01:17:55.609Z"
+    },
+    {
+      "id": "REQ1776993475239",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:55.239Z",
+      "updated_at": "2026-04-24T01:17:55.239Z"
+    },
+    {
+      "id": "REQ1776993474863",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:54.863Z",
+      "updated_at": "2026-04-24T01:17:54.863Z"
+    },
+    {
+      "id": "REQ1776993474148",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:54.148Z",
+      "updated_at": "2026-04-24T01:17:54.148Z"
+    },
+    {
+      "id": "REQ1776993474099",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:54.099Z",
+      "updated_at": "2026-04-24T01:17:54.099Z"
+    },
+    {
+      "id": "REQ1776993474064",
+      "title": "review项目",
+      "description": "进行debug",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-24T01:17:54.064Z",
+      "updated_at": "2026-04-24T01:17:54.064Z"
+    },
+    {
+      "id": "REQ1776962479438",
+      "title": "review项目",
+      "description": "review一下本项目，看看有哪些要加的，更新到devstate.json中去",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-23T16:41:19.438Z",
+      "updated_at": "2026-04-23T16:41:19.438Z"
+    },
+    {
+      "id": "REQ1776647484818",
+      "title": "优化手机版图标显示",
+      "description": "手机版的这个底部的图标太突兀了，因为手机版也是用浏览器访问的，而且底部的这些按钮在页面上本身也有显示，所以有点重复了。建议是集成一下，相关按钮可以放底部，但是要和原来的页面融为一体，并且只留图标不留文字",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-20T01:11:24.818Z",
+      "updated_at": "2026-04-20T01:11:24.818Z"
+    },
+    {
+      "id": "REQ1776616722649",
+      "title": "手机版UI",
+      "description": "设计个手机版UI布局，在手机端可以自动识别并切换，另外前端页面中增加一个手动切换的按钮，点击后可以在手机版UI和PC版UI之间切换",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-19T16:38:42.649Z",
+      "updated_at": "2026-04-19T16:38:42.649Z"
+    },
+    {
+      "id": "REQ1776601761917",
+      "title": "无法登录",
+      "description": "目前卡在前端的登录页面，点击登录无法登录，显示报错：Failed to load resource: the server responded with a status of 401 (UNAUTHORIZED)。请进行修复",
+      "category": "Bug",
+      "status": "New",
+      "created_at": "2026-04-19T12:29:21.917Z",
+      "updated_at": "2026-04-19T12:29:21.917Z"
+    },
+    {
+      "id": "REQ1776601678425",
+      "title": "同步代码需求",
+      "description": "首先确认当前项目的最新修改是否被同步至github，如果没有则往github同步一次",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-19T12:27:58.425Z",
+      "updated_at": "2026-04-19T12:27:58.425Z"
+    },
+    {
+      "id": "REQ1776104987136",
+      "title": "test",
+      "description": "测试消息，不用执行开发任务",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-13T18:29:47.136Z",
+      "updated_at": "2026-04-13T18:29:47.136Z"
+    },
+    {
+      "id": "REQ1776004278554",
+      "title": "第3次测试",
+      "description": "不用执行任何任务或动作，这是个测试指令",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-12T14:31:18.554Z",
+      "updated_at": "2026-04-12T14:31:18.554Z"
+    },
+    {
+      "id": "REQ1776003965683",
+      "title": "再次测试",
+      "description": "hi，你好，当前指令依旧是测试指令，不用执行任何开发任务",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-12T14:26:05.683Z",
+      "updated_at": "2026-04-12T14:26:05.683Z"
+    },
+    {
+      "id": "REQ1776003942406",
+      "title": "测试",
+      "description": "hi，你好，不用执行任务，当前指令为测试指令",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-12T14:25:42.406Z",
+      "updated_at": "2026-04-12T14:25:42.406Z"
+    },
+    {
+      "id": "REQ1775971510896",
+      "title": "测试02",
+      "description": "这是个测试需求，只要回复hi就行",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-12T05:25:10.896Z",
+      "updated_at": "2026-04-12T05:25:10.896Z"
+    },
+    {
+      "id": "REQ1775971499741",
+      "title": "测试01",
+      "description": "这是个测试需求，不用执行任务，只要回复hi就行",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-12T05:24:59.741Z",
+      "updated_at": "2026-04-12T05:24:59.741Z"
+    },
+    {
+      "id": "REQ1775964222847",
+      "title": "标签识别未生效",
+      "description": "识别笔记列表标签的功能完全没有生效，目前前端点击按钮后仅显示“正在识别”，但并未生成任何标签。",
+      "category": "Bug",
+      "status": "New",
+      "created_at": "2026-04-12T03:23:42.847Z",
+      "updated_at": "2026-04-12T03:23:42.847Z"
+    },
+    {
+      "id": "REQ1775929597276",
+      "title": "测试",
+      "description": "不用执行任务，简单回复你好就行",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-11T17:46:37.276Z",
+      "updated_at": "2026-04-11T17:46:37.276Z"
+    },
+    {
+      "id": "REQ1775926181889",
+      "title": "问候",
+      "description": "你好",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-11T16:49:41.889Z",
+      "updated_at": "2026-04-11T16:49:41.889Z"
+    },
+    {
+      "id": "REQ1775924869671",
+      "title": "hi",
+      "description": "你好",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-11T16:27:49.671Z",
+      "updated_at": "2026-04-11T16:27:49.671Z"
+    },
+    {
+      "id": "REQ1775924843722",
+      "title": "test",
+      "description": "什么都不用干，回复个你好就行",
+      "category": "Feature",
+      "status": "New",
+      "created_at": "2026-04-11T16:27:23.722Z",
+      "updated_at": "2026-04-11T16:27:23.722Z"
+    }
+  ]
+}

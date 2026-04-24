@@ -96,6 +96,9 @@ function loadSettings() {
             if (!state.settings.markdownConvertPrompt && state.settings.aiFormatPrompt) {
                 state.settings.markdownConvertPrompt = state.settings.aiFormatPrompt;
             }
+            if (!state.settings.tagExtractPrompt) {
+                state.settings.tagExtractPrompt = '';
+            }
         } catch (e) {
             console.error('解析设置失败', e);
         }

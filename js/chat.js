@@ -418,7 +418,7 @@ function updateChatContextUI() {
         const note = state.notes.find(n => n.id === id);
         if (!note) return '';
         return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-            ${escapeHtmlForChat(note.title)} <button type="button" onclick="state.chatContext.delete('${id}'); updateChatContextUI()" class="ml-1 hover:text-red-500">×</button>
+            ${escapeHtmlForChat(note.title)} <button type="button" onclick="state.chatContext.delete('${id}'); updateChatContextUI()" class="ml-1 hover:text-red-500" title="移除">×</button>
         </span>`;
     }).join('');
     container.innerHTML = pills || '<span class="text-xs text-slate-400">未选择上下文</span>';

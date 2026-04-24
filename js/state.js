@@ -34,7 +34,11 @@ window.state = {
     events: [],
     eventSort: 'create_desc',
     activeTagFilter: null,
-    activeNoteTagFilter: null,  // 笔记标签筛选
+    activeStatusFilter: null,   // 事件状态筛选
+    activeNoteTagFilter: null,  // 笔记标签筛选（兼容旧版单选）
+    selectedNoteTags: new Set(), // 笔记标签多选筛选（新版标签云）
+    tagCloudExpanded: true,     // 标签云展开状态
+    noteSearchQuery: '',        // 笔记全文搜索关键词
     editorView: 'edit',
     autoTagEnabled: false,  // 自动标签识别开关
     settings: {
@@ -43,11 +47,15 @@ window.state = {
         model: 'gpt-3.5-turbo',
         systemPromptChat: '你是一个智能笔记助手，帮助用户整理思路、提取关键信息和规划任务。请基于提供的笔记内容给出有帮助的回答。',
         systemPromptEventExtract: '你是一个事件与任务抽取助手，请严格按照以下要求从给定的中文笔记中提取结构化数据：\\n\\n1. 只输出 JSON，格式为：{ "events": [ { "title": string, "context": string, "tags": string[], "time": string } ] }，不要包含任何多余文字。\\n2. 每个事件：\\n   - title：一句话概括事件或待办事项，简短且有可执行性。\\n   - context：从原文中提炼的详细说明，包含背景、目的、约束等。\\n   - tags：提取 1～5 个标签，例如：["工作", "学习", "会议", "重要", "待办"]。\\n   - time：如果原文中有明确时间（如“明天上午10点”“3月1日之前”），请标准化为自然语言短语；如果没有明确时间，请用空字符串 ""。\\n3. 忽略完全重复或无实际行动意义的描述（如泛泛的感受、无具体动作的感想）。\\n4. 若无法提取任何事件，请返回 { "events": [] }。',
-        markdownConvertPrompt: '你是 Markdown 编辑专家。请把用户给出的纯文本整理为结构清晰、可读性强的 Markdown。要求：\\n1) 保留原始语义，不编造事实；\\n2) 自动识别主题并拆分为合适的标题与小节；\\n3) 将并列信息转为列表，将步骤转为有序列表；\\n4) 重要信息可用加粗、引用块强调；\\n5) 若出现时间/任务信息，可整理为 TODO 列表；\\n6) 仅输出最终 Markdown，不要额外解释。'
+        markdownConvertPrompt: '你是 Markdown 编辑专家。请把用户给出的纯文本整理为结构清晰、可读性强的 Markdown。要求：\\n1) 保留原始语义，不编造事实；\\n2) 自动识别主题并拆分为合适的标题与小节；\\n3) 将并列信息转为列表，将步骤转为有序列表；\\n4) 重要信息可用加粗、引用块强调；\\n5) 若出现时间/任务信息，可整理为 TODO 列表；\\n6) 仅输出最终 Markdown，不要额外解释。',
+        tagExtractPrompt: '',
+        autoTagEnabled: false
     },
     sidebarOpen: true,
     chatOpen: false,
     eventOpen: false,
+    uiModePreference: 'auto',
+    resolvedUiMode: 'desktop',
     chatLoading: false,
     eventLoading: false
 };

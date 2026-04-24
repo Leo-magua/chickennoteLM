@@ -117,6 +117,321 @@
             60% { content: '..'; }
             80%, 100% { content: '...'; }
         }
+
+        /* Global interactive tooltip */
+        #globalHoverTooltip {
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 120;
+            max-width: min(16rem, calc(100vw - 2rem));
+            padding: 0.5rem 0.7rem;
+            border-radius: 0.9rem;
+            border: 1px solid rgba(203, 213, 225, 0.95);
+            background: rgba(255, 255, 255, 0.98);
+            color: #0f172a;
+            font-size: 0.75rem;
+            font-weight: 500;
+            line-height: 1.35;
+            letter-spacing: 0.01em;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14);
+            pointer-events: none;
+            opacity: 0;
+            transform: translate3d(0, 8px, 0) scale(0.985);
+            transform-origin: center top;
+            transition: opacity 0.16s ease, transform 0.18s ease;
+            white-space: normal;
+            backdrop-filter: blur(10px);
+        }
+
+        #globalHoverTooltip.is-visible {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+        }
+
+        #globalHoverTooltip::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -5px;
+            width: 10px;
+            height: 10px;
+            margin-left: -5px;
+            background: rgba(255, 255, 255, 0.98);
+            border-left: 1px solid rgba(203, 213, 225, 0.95);
+            border-top: 1px solid rgba(203, 213, 225, 0.95);
+            transform: rotate(45deg);
+        }
+
+        #globalHoverTooltip[data-placement="top"] {
+            transform: translate3d(0, -8px, 0) scale(0.985);
+            transform-origin: center bottom;
+        }
+
+        #globalHoverTooltip[data-placement="top"].is-visible {
+            transform: translate3d(0, 0, 0) scale(1);
+        }
+
+        #globalHoverTooltip[data-placement="top"]::after {
+            top: auto;
+            bottom: -5px;
+            border-left: none;
+            border-top: none;
+            border-right: 1px solid rgba(203, 213, 225, 0.95);
+            border-bottom: 1px solid rgba(203, 213, 225, 0.95);
+        }
+
+        #editorHeaderRight button,
+        #editorFooterActions button {
+            position: relative;
+        }
+
+        body[data-ui-mode="mobile"] {
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 0.5rem;
+            gap: 0;
+            padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+            align-items: stretch;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top, rgba(191, 219, 254, 0.45), transparent 36%),
+                linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+        }
+
+        body[data-ui-mode="mobile"] #editor-panel {
+            width: 100%;
+            min-width: 0;
+            border-radius: 1.25rem;
+            min-height: calc(100dvh - 1rem - env(safe-area-inset-bottom, 0px));
+            max-height: calc(100dvh - 1rem - env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+        }
+
+        body[data-ui-mode="mobile"] #editorHeader {
+            height: auto;
+            min-height: 3.5rem;
+            padding: 0.75rem;
+            align-items: flex-start;
+            gap: 0.75rem;
+            position: sticky;
+            top: 0;
+        }
+
+        body[data-ui-mode="mobile"] #editorHeaderLeft,
+        body[data-ui-mode="mobile"] #editorHeaderRight {
+            width: 100%;
+        }
+
+        /* Tag cloud transition */
+        #tagCloudContainer {
+            transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
+        }
+
+        body[data-ui-mode="mobile"] #editorHeaderLeft {
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        body[data-ui-mode="mobile"] #editorHeaderRight {
+            justify-content: space-between;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            overflow-x: auto;
+        }
+
+        body[data-ui-mode="mobile"] #editorHeaderRight button,
+        body[data-ui-mode="mobile"] #editorHeaderRight label {
+            flex-shrink: 0;
+        }
+
+        body[data-ui-mode="mobile"] #currentNoteTitle {
+            font-size: 1rem;
+        }
+
+        body[data-ui-mode="mobile"] #editorTagsBar {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        body[data-ui-mode="mobile"] #editorContentWrap {
+            padding: 1rem;
+        }
+
+        body[data-ui-mode="mobile"] #editorFooterBar {
+            padding: 0.75rem 1rem 1rem;
+            gap: 0.875rem;
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        body[data-ui-mode="mobile"] #editorFooterActions {
+            width: 100%;
+            gap: 0.75rem;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 0.125rem;
+        }
+
+        body[data-ui-mode="mobile"] #editorFooterActions button {
+            flex-shrink: 0;
+        }
+
+        body[data-ui-mode="mobile"] #mobileDock {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.25rem 0 calc(env(safe-area-inset-bottom, 0px) * 0.5);
+            border-top: 1px solid #e2e8f0;
+        }
+
+        body[data-ui-mode="mobile"] #mobileDock button {
+            width: 2.75rem;
+            height: 2.75rem;
+            min-width: 2.75rem;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #475569;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        body[data-ui-mode="mobile"] #mobileDock .mobile-dock-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            color: currentColor;
+        }
+
+        body[data-ui-mode="mobile"] #sidebar-panel,
+        body[data-ui-mode="mobile"] #chat-panel,
+        body[data-ui-mode="mobile"] #event-panel {
+            position: fixed;
+            top: 0.5rem;
+            bottom: 0.5rem;
+            z-index: 70;
+            max-width: calc(100vw - 1rem);
+            width: min(24rem, calc(100vw - 1rem));
+            border-radius: 1.25rem;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+            transition: transform 0.24s ease, opacity 0.24s ease;
+            opacity: 1;
+        }
+
+        body[data-ui-mode="mobile"] #sidebar-panel {
+            left: 0.5rem;
+        }
+
+        body[data-ui-mode="mobile"] #chat-panel,
+        body[data-ui-mode="mobile"] #event-panel {
+            right: 0.5rem;
+        }
+
+        body[data-ui-mode="mobile"] #sidebar-panel.hidden,
+        body[data-ui-mode="mobile"] #chat-panel.hidden,
+        body[data-ui-mode="mobile"] #event-panel.hidden {
+            display: flex !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        body[data-ui-mode="mobile"] #sidebar-panel.hidden {
+            transform: translateX(-110%);
+        }
+
+        body[data-ui-mode="mobile"] #chat-panel.hidden,
+        body[data-ui-mode="mobile"] #event-panel.hidden {
+            transform: translateX(110%);
+        }
+
+        body[data-ui-mode="mobile"] #sidebar-panel:not(.hidden),
+        body[data-ui-mode="mobile"] #chat-panel:not(.hidden),
+        body[data-ui-mode="mobile"] #event-panel:not(.hidden) {
+            transform: translateX(0);
+        }
+
+        body[data-ui-mode="mobile"] .resizer {
+            display: none !important;
+        }
+
+        body[data-ui-mode="mobile"] #settingsModal {
+            z-index: 90;
+            padding: 1rem;
+        }
+
+        body[data-ui-mode="mobile"] #settingsModal > div {
+            max-height: calc(100dvh - 2rem);
+            margin: 0;
+        }
+
+        body[data-ui-mode="mobile"] #toast {
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        body[data-ui-mode="mobile"] .desktop-divider,
+        body[data-ui-mode="mobile"] .desktop-save-btn {
+            display: none !important;
+        }
+
+        body[data-ui-mode="mobile"] .mobile-mode-only {
+            display: inline-flex !important;
+        }
+
+        body[data-ui-mode="desktop"] .mobile-mode-only {
+            display: none !important;
+        }
+
+        body[data-ui-mode="desktop"] .desktop-save-btn {
+            display: inline-flex !important;
+        }
+
+        body[data-ui-mode="desktop"] .desktop-divider {
+            display: block !important;
+        }
+
+        /* Search highlight */
+        mark {
+            background-color: #fef08a;
+            color: #854d0e;
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+
+        /* Scrollbar hide utility */
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Kanban column drop zone highlight */
+        .kanban-drop-active {
+            background-color: #fffbeb;
+            box-shadow: inset 0 0 0 2px #fcd34d;
+        }
+
+        body[data-ui-mode="mobile"] #uiModeStatus {
+            display: inline;
+        }
+
+        #mobileDock button[data-active="true"] {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        #mobileDock button[data-active="true"] .mobile-dock-icon {
+            color: #2563eb;
+        }
+
+        body[data-ui-mode="desktop"] #mobileDock {
+            display: none !important;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
@@ -124,6 +439,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 </head>
 <body class="bg-slate-200 text-slate-900 h-screen overflow-hidden p-2 flex gap-1">
+    <div id="mobilePanelOverlay" class="hidden fixed inset-0 bg-slate-900/35 backdrop-blur-[1px] z-[60]"></div>
 
 
     <!-- 登录遮罩：未登录时显示 -->
@@ -144,12 +460,16 @@
         <!-- Sidebar Header -->
         <div class="p-4 border-b border-slate-200 bg-slate-50/80">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-semibold text-slate-700 flex items-center gap-2">
+                <h2 class="font-semibold text-slate-700 flex items-center gap-2" title="笔记列表">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                    笔记列表
                 </h2>
                 <div class="flex gap-1">
-                    <button onclick="selectAllNotes()" class="p-1.5 hover:bg-slate-200 rounded text-slate-600 text-xs font-medium transition-colors" title="全选">全选</button>
+                    <button onclick="toggleSidebar()" class="mobile-mode-only p-1.5 hover:bg-slate-200 rounded text-slate-500 transition-colors" title="关闭笔记列表">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <button onclick="selectAllNotes()" class="p-1.5 hover:bg-slate-200 rounded text-slate-600 transition-colors" title="全选">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    </button>
                     <button onclick="createNewNote()" class="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition-colors" title="新建笔记">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     </button>
@@ -157,27 +477,58 @@
             </div>
             <!-- Batch Actions -->
             <div id="batchActions" class="hidden flex flex-wrap gap-1.5 animate-slide-in">
-                <button onclick="batchRename()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">重命名</button>
-                <button onclick="batchDuplicate()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">副本</button>
-                <button onclick="batchImportToChat()" class="flex-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-700">导入对话</button>
-                <button onclick="batchExtractEvents()" class="flex-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded text-xs text-amber-700">提取事件</button>
-                <button onclick="batchDelete()" class="px-2 py-1 bg-red-100 hover:bg-red-200 rounded text-xs text-red-700" title="删除选中笔记">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <button onclick="batchRename()" class="p-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 transition-colors" title="重命名">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                </button>
+                <button onclick="batchDuplicate()" class="p-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 transition-colors" title="副本">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
+                <button onclick="batchImportToChat()" class="p-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 transition-colors" title="导入对话">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                </button>
+                <button onclick="batchExtractEvents()" class="p-1.5 bg-amber-100 hover:bg-amber-200 rounded text-amber-700 transition-colors" title="提取事件">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </button>
+                <button onclick="batchDelete()" class="p-1.5 bg-red-100 hover:bg-red-200 rounded text-red-700 transition-colors" title="删除选中笔记">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
             </div>
         </div>
-        <!-- Tag Filter Bar -->
-        <div id="noteTagFilterBar" class="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between min-h-[44px]">
-            <div id="noteTagsContainer" class="flex gap-1.5 overflow-x-auto flex-1 mr-2 scrollbar-hide items-center">
-                <span class="text-xs text-slate-400">加载中...</span>
+        <!-- Search Bar -->
+        <div id="noteSearchBar" class="px-3 py-2 border-b border-slate-200 bg-white">
+            <div class="relative">
+                <input type="text" id="noteSearchInput" placeholder="搜索笔记标题和内容..."
+                    class="w-full pl-8 pr-7 py-1.5 bg-slate-100 border border-transparent rounded-lg text-sm focus:outline-none focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all"
+                    oninput="handleNoteSearch(this.value)">
+                <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <button id="noteSearchClearBtn" onclick="clearNoteSearch()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-200 rounded text-slate-400 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
-            <div class="flex items-center gap-1 flex-shrink-0">
-                <button onclick="TagManager.extractTagsForCurrentNote()" class="p-1.5 hover:bg-blue-100 text-slate-500 hover:text-blue-600 rounded-lg transition-colors" title="识别当前笔记标签">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
-                </button>
-                <button onclick="TagManager.toggleAutoTag()" id="autoTagToggleBtn" class="p-1.5 hover:bg-blue-100 text-slate-500 hover:text-blue-600 rounded-lg transition-colors" title="自动标签识别">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                </button>
+        </div>
+        <!-- Tag Cloud Section -->
+        <div id="tagCloudSection" class="border-b border-slate-200 bg-slate-50/80 transition-opacity">
+            <!-- Tag Cloud Header -->
+            <div class="px-3 py-2 flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                    <span id="tagCloudCount" class="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-500 rounded-full"></span>
+                </div>
+                <div class="flex items-center gap-0.5">
+                    <button onclick="TagManager.extractTagsForCurrentNote()" class="p-1 hover:bg-blue-100 text-slate-400 hover:text-blue-600 rounded transition-colors" title="识别当前笔记标签">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </button>
+                    <button onclick="TagManager.toggleAutoTag()" id="autoTagToggleBtn" class="p-1 hover:bg-blue-100 text-slate-400 hover:text-blue-600 rounded transition-colors" title="自动标签识别">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </button>
+                    <button onclick="toggleTagCloud()" class="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded transition-colors" title="展开/收起">
+                        <svg id="tagCloudToggleIcon" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Tag Cloud Container -->
+            <div id="tagCloudContainer" class="px-3 pb-2 flex flex-wrap gap-1.5 overflow-y-auto transition-all" style="max-height: 160px;">
+                <span class="text-xs text-slate-400">加载中...</span>
             </div>
         </div>
         <!-- Note List -->
@@ -189,9 +540,9 @@
     <!-- Main Editor Panel -->
     <main id="editor-panel" class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col min-w-[300px] overflow-hidden">
         <!-- Top Navigation Bar -->
-        <header class="h-14 border-b border-slate-200 flex items-center justify-between px-4 bg-white/80 backdrop-blur-sm z-10">
-            <div class="flex items-center gap-3 flex-1">
-                <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="切换侧边栏">
+        <header id="editorHeader" class="h-14 border-b border-slate-200 flex items-center justify-between px-4 bg-white/80 backdrop-blur-sm z-10">
+            <div id="editorHeaderLeft" class="flex items-center gap-3 flex-1">
+                <button id="sidebarToggleBtn" onclick="toggleSidebar()" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="切换侧边栏">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
                 <!-- Note Title -->
@@ -205,10 +556,15 @@
             </div>
 
             <!-- Right Actions -->
-            <div class="flex items-center gap-2">
-                <button onclick="saveCurrentNote()" class="hidden md:flex px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium text-slate-700 transition-colors items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                    保存
+            <div id="editorHeaderRight" class="flex items-center gap-2">
+                <button id="uiModeToggleBtn" onclick="toggleUiMode()" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 transition-colors flex items-center gap-2" title="切换手机版或 PC 版布局">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                </button>
+                <button id="uiModeAutoBtn" onclick="resetUiModePreference()" class="hidden p-2 bg-white hover:bg-slate-100 rounded-lg text-slate-600 border border-slate-200 transition-colors" title="恢复按屏幕宽度自动切换布局">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </button>
+                <button onclick="saveCurrentNote()" class="desktop-save-btn p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 transition-colors items-center gap-1.5" title="保存">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                 </button>
 
                 <!-- 导入数据按钮 (JSON上传) -->
@@ -217,7 +573,7 @@
                 </button>
                 <input type="file" id="importFile" accept="application/json" class="hidden" aria-label="导入 JSON 数据文件" onchange="importDataFromFile(event)">
 
-                <div class="w-px h-6 bg-slate-300 mx-1 hidden md:block"></div>
+                <div class="desktop-divider w-px h-6 bg-slate-300 mx-1"></div>
 
                 <!-- Module Toggles -->
                 <button onclick="toggleAIChat()" id="chatToggleBtn" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors relative" title="切换AI对话">
@@ -240,12 +596,11 @@
             <!-- Note Tags Bar -->
             <div id="editorTagsBar" class="px-8 py-2 border-b border-slate-100 bg-white flex items-center gap-2 flex-wrap">
                 <div id="editorTagsList" class="flex flex-wrap gap-1.5 items-center flex-1"></div>
-                <button onclick="addTagToCurrentNote()" class="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-colors flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    添加标签
+                <button onclick="addTagToCurrentNote()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-colors flex items-center gap-1" title="添加标签">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-8 bg-white">
+            <div id="editorContentWrap" class="flex-1 overflow-y-auto p-8 bg-white">
                 <textarea id="noteEditor"
                           class="w-full h-full resize-none border-0 focus:outline-none text-slate-700 leading-relaxed text-base editor-content mono bg-transparent"
                           placeholder="开始输入 Markdown 格式的笔记..."
@@ -253,24 +608,44 @@
                 <div id="notePreview"
                      class="markdown-body hidden mt-4 text-slate-800 text-base leading-relaxed"></div>
             </div>
-            <div class="border-t border-slate-200 p-2 px-4 text-xs text-slate-400 flex justify-between items-center bg-slate-50/50">
+            <div id="editorFooterBar" class="border-t border-slate-200 p-2 px-4 text-xs text-slate-400 flex justify-between items-center bg-slate-50/50">
                 <span id="wordCount">0 字</span>
-                <div class="flex gap-4 items-center">
+                <div id="editorFooterActions" class="flex gap-4 items-center">
                     <button id="editorModeToggle"
                             onclick="toggleEditorView()"
-                            class="hover:text-blue-600 transition-colors">
-                        预览模式：关
+                            class="hover:text-blue-600 transition-colors p-1" title="预览模式">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                     </button>
                     <button id="markdownConvertBtn"
                             onclick="convertCurrentNoteToMarkdown()"
-                            class="hover:text-indigo-600 transition-colors inline-flex items-center gap-1"
+                            class="hover:text-indigo-600 transition-colors inline-flex items-center p-1"
                             title="调用大模型将当前内容整理为 Markdown">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"></path></svg>
-                        转为Markdown
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10"></path></svg>
                     </button>
-                    <button onclick="importCurrentNoteToChat()" class="hover:text-blue-600 transition-colors">导入AI对话</button>
-                    <button onclick="extractEventsFromCurrent()" class="hover:text-amber-600 transition-colors">提取当前事件</button>
+                    <button onclick="importCurrentNoteToChat()" class="hover:text-blue-600 transition-colors p-1" title="导入AI对话">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    </button>
+                    <button onclick="extractEventsFromCurrent()" class="hover:text-amber-600 transition-colors p-1" title="提取当前事件">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </button>
+                    <button onclick="openEventRefSelector()" class="hover:text-amber-600 transition-colors inline-flex items-center p-1" title="在笔记中引用事件">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    </button>
                 </div>
+                <nav id="mobileDock" class="hidden" aria-label="移动端底部快捷操作">
+                    <button type="button" id="mobileSidebarBtn" onclick="toggleSidebar()" class="transition-colors" data-active="false" title="笔记列表" aria-label="打开或关闭笔记列表">
+                        <svg class="mobile-dock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <button type="button" id="mobileChatBtn" onclick="toggleAIChat()" class="transition-colors" data-active="false" title="AI 对话" aria-label="打开或关闭 AI 对话">
+                        <svg class="mobile-dock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    </button>
+                    <button type="button" id="mobileEventBtn" onclick="toggleEventModule()" class="transition-colors" data-active="false" title="事件识别" aria-label="打开或关闭事件识别">
+                        <svg class="mobile-dock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </button>
+                    <button type="button" id="mobileUiModeBtn" onclick="toggleUiMode()" class="transition-colors" data-active="false" title="切换手机版或 PC 版布局" aria-label="切换手机版或 PC 版布局">
+                        <svg class="mobile-dock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    </button>
+                </nav>
             </div>
         </div>
     </main>
@@ -280,17 +655,16 @@
     <!-- AI Chat Panel -->
     <aside id="chat-panel" class="w-80 bg-white rounded-2xl shadow-sm border border-slate-200 hidden flex-col flex-shrink-0 overflow-hidden">
         <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-50/50 to-white flex items-center justify-between">
-            <h3 class="font-semibold text-slate-700 flex items-center gap-2">
+            <h3 class="font-semibold text-slate-700 flex items-center gap-2" title="AI 助手">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                AI 助手
             </h3>
             <div class="flex items-center gap-2">
                 <select id="chatSessionSelect" aria-label="选择历史对话"
                         class="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                         onchange="handleChatSessionChange(this)">
                 </select>
-                <button onclick="createNewChatSession(true)" class="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                    新建对话
+                <button onclick="createNewChatSession(true)" class="p-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors" title="新建对话">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 </button>
                 <button onclick="toggleAIChat()" class="p-1 hover:bg-slate-200 rounded text-slate-500" title="关闭 AI 对话面板">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -336,17 +710,30 @@
     <!-- Event Panel -->
     <aside id="event-panel" class="w-[360px] bg-white rounded-2xl shadow-sm border border-slate-200 hidden flex-col flex-shrink-0 overflow-hidden">
         <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-amber-50/80 to-white">
-            <h3 class="font-semibold text-slate-700 flex items-center gap-2">
+            <h3 class="font-semibold text-slate-700 flex items-center gap-2" title="事件识别">
                 <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                事件识别
             </h3>
             <div class="flex gap-1.5 items-center">
-                <button onclick="extractAllEvents()" class="text-xs px-2.5 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 font-medium transition-colors">
-                    全局提取
+                <button onclick="extractAllEvents()" class="p-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors" title="全局提取">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 </button>
                 <button onclick="toggleEventModule()" class="p-1 hover:bg-slate-200 rounded text-slate-500" title="关闭事件识别面板">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
+            </div>
+        </div>
+
+        <!-- View Mode and Status Filter Bar -->
+        <div class="px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+            <button onclick="toggleEventViewMode()" id="eventViewModeBtn" class="p-1.5 rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition-colors flex items-center flex-shrink-0" title="切换列表/看板视图">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+            </button>
+            <div class="w-px h-4 bg-slate-300"></div>
+            <div id="statusFilterContainer" class="flex gap-1 flex-1 overflow-x-auto scrollbar-hide items-center">
+                <button onclick="filterByStatus(null)" id="statusFilter-all" class="text-[11px] px-2 py-0.5 rounded-md border transition-colors whitespace-nowrap bg-amber-100 border-amber-300 text-amber-800 font-medium" title="全部">∷</button>
+                <button onclick="filterByStatus('todo')" id="statusFilter-todo" class="text-[11px] px-2 py-0.5 rounded-md border transition-colors whitespace-nowrap bg-white border-slate-200 text-slate-600 hover:bg-slate-50" title="待办">📝</button>
+                <button onclick="filterByStatus('in_progress')" id="statusFilter-in_progress" class="text-[11px] px-2 py-0.5 rounded-md border transition-colors whitespace-nowrap bg-white border-slate-200 text-slate-600 hover:bg-slate-50" title="进行中">🔄</button>
+                <button onclick="filterByStatus('done')" id="statusFilter-done" class="text-[11px] px-2 py-0.5 rounded-md border transition-colors whitespace-nowrap bg-white border-slate-200 text-slate-600 hover:bg-slate-50" title="已完成">✅</button>
             </div>
         </div>
 
@@ -358,11 +745,10 @@
 
             <!-- Sort Dropdown -->
             <div class="relative inline-block text-left flex-shrink-0">
-                <button onclick="toggleSortMenu(event)" id="sortBtn" class="inline-flex items-center justify-center rounded-md border border-slate-300 shadow-sm px-2.5 py-1 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none transition-colors">
-                    <svg class="w-3.5 h-3.5 mr-1 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
-                    排序
+                <button onclick="toggleSortMenu(event)" id="sortBtn" class="inline-flex items-center justify-center rounded-md border border-slate-300 shadow-sm p-1.5 bg-white text-slate-700 hover:bg-slate-50 focus:outline-none transition-colors" title="排序">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
                 </button>
-                <div id="sortDropdown" class="hidden origin-top-right absolute right-0 mt-1 w-36 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-100">
+                <div id="sortDropdown" class="hidden origin-top-right absolute right-0 mt-1 w-40 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 divide-y divide-slate-100">
                     <div class="py-1">
                         <a href="#" onclick="changeSort('create_desc'); return false;" class="group flex items-center px-4 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700">生成时间 (降序)</a>
                         <a href="#" onclick="changeSort('create_asc'); return false;" class="group flex items-center px-4 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700">生成时间 (升序)</a>
@@ -370,6 +756,10 @@
                     <div class="py-1">
                         <a href="#" onclick="changeSort('update_desc'); return false;" class="group flex items-center px-4 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700">最后更新 (降序)</a>
                         <a href="#" onclick="changeSort('update_asc'); return false;" class="group flex items-center px-4 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700">最后更新 (升序)</a>
+                    </div>
+                    <div class="py-1">
+                        <a href="#" onclick="changeSort('due_asc'); return false;" class="group flex items-center px-4 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700">截止日期 (升序)</a>
+                        <a href="#" onclick="changeSort('due_desc'); return false;" class="group flex items-center px-4 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700">截止日期 (降序)</a>
                     </div>
                 </div>
             </div>
@@ -386,7 +776,7 @@
     </aside>
 
     <!-- Settings Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] hidden items-center justify-center">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg m-4 overflow-hidden animate-slide-in border border-slate-200">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <h2 class="text-lg font-bold text-slate-800">系统配置</h2>
@@ -440,11 +830,100 @@
         </div>
     </div>
 
+    <!-- Conflict Resolution Modal -->
+    <div id="conflictModalOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[95] hidden"></div>
+    <div id="conflictModal" class="fixed inset-0 z-[96] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden animate-slide-in border border-slate-200 flex flex-col">
+            <!-- Header -->
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">同步冲突</h2>
+                        <p id="conflictNoteTitle" class="text-sm text-slate-500 truncate max-w-md">未命名笔记</p>
+                    </div>
+                </div>
+                <button onclick="window.conflictManager.closeConflictModal()" class="p-1.5 hover:bg-slate-200 rounded-full transition-colors" title="稍后处理">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="px-4 pt-3 flex gap-2 shrink-0">
+                <button id="conflictViewDiffBtn" onclick="window.conflictManager.showConflictView('diff')" class="px-3 py-1.5 text-sm rounded-lg bg-blue-100 text-blue-700 font-medium transition-colors">
+                    差异对比
+                </button>
+                <button id="conflictViewMergeBtn" onclick="window.conflictManager.showConflictView('merge')" class="px-3 py-1.5 text-sm rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+                    手动合并
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-hidden p-4 min-h-0">
+                <!-- Diff View -->
+                <div id="conflictDiffView" class="h-full flex flex-col gap-3">
+                    <div class="flex gap-3 h-full min-h-0">
+                        <!-- Local Version -->
+                        <div class="flex-1 flex flex-col min-w-0 border border-slate-200 rounded-xl overflow-hidden">
+                            <div class="px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+                                <span class="text-sm font-medium text-blue-800">本地版本</span>
+                                <span id="conflictLocalTime" class="text-xs text-blue-600">--</span>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-2">
+                                <div id="conflictTitleDiff" class="mb-2 hidden"></div>
+                                <div id="conflictContentDiff" class="font-mono text-sm"></div>
+                            </div>
+                        </div>
+                        <!-- Server Version -->
+                        <div class="flex-1 flex flex-col min-w-0 border border-slate-200 rounded-xl overflow-hidden">
+                            <div class="px-3 py-2 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
+                                <span class="text-sm font-medium text-purple-800">服务器版本</span>
+                                <span id="conflictServerTime" class="text-xs text-purple-600">--</span>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-2">
+                                <div class="text-slate-400 text-sm italic p-2 text-center">右侧显示服务器版本内容</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Legend -->
+                    <div class="flex gap-4 text-xs text-slate-500 shrink-0">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-50 border border-green-400 rounded"></span> 新增</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-red-50 border border-red-400 rounded"></span> 删除</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-white border border-slate-200 rounded"></span> 相同</span>
+                    </div>
+                </div>
+
+                <!-- Merge View -->
+                <div id="conflictMergeView" class="h-full flex flex-col gap-3 hidden">
+                    <div class="text-sm text-slate-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        请在下方编辑框中编辑合并后的内容。默认填充为本地版本内容，您可以根据左侧差异对比进行修改。
+                    </div>
+                    <textarea id="conflictMergeEditor" class="flex-1 w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none text-sm font-mono resize-none" placeholder="在此编辑合并后的内容..."></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
+                <span class="text-xs text-slate-400">冲突解决后将自动同步</span>
+                <div class="flex gap-2">
+                    <button onclick="window.conflictManager.closeConflictModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">稍后处理</button>
+                    <button onclick="window.conflictManager.resolveConflict('server')" class="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium">使用服务器版本</button>
+                    <button onclick="window.conflictManager.resolveConflict('client')" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium">使用本地版本</button>
+                    <button onclick="window.conflictManager.resolveConflict('merge')" class="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors font-medium">保存合并</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-2.5 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2 text-sm font-medium">
         <span id="toastIcon" class="text-green-400">✓</span>
         <span id="toastMessage">操作成功</span>
     </div>
+
+    <div id="globalHoverTooltip" role="tooltip" aria-hidden="true"></div>
 
     <!-- API 根路径：子路径部署（如 /chickennoteLM）时避免相对 api/ 被解析到错误的 /api/ 导致 401/404 -->
     <script>
@@ -476,6 +955,7 @@
     <script src="js/ai-format.js"></script>
     <script src="js/greeting.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/conflict.js"></script>
     <script src="js/paste-image.js"></script>
 </body>
 </html>

@@ -1098,6 +1098,9 @@ def sync_resolve_conflict():
     note_dir, _, _, _ = get_user_dirs(get_current_user())
     resolutions = data.get("resolutions", [])
     
+    index_map = load_note_index(note_dir)
+    index_changed = False
+    
     results = []
     for resolution in resolutions:
         note_id = resolution.get("id")
@@ -1118,6 +1121,17 @@ def sync_resolve_conflict():
                 meta = {"id": note_id, "title": title, "updatedAt": updated_at, "tags": resolution.get("tags", [])}
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
                 
+                # 更新索引
+                current_ms = int(datetime.utcnow().timestamp() * 1000)
+                index_map[str(note_id)] = {
+                    "id": str(note_id),
+                    "title": title,
+                    "base": base,
+                    "updatedAt": updated_at,
+                    "modified_at": current_ms,
+                }
+                index_changed = True
+                
                 results.append({"id": note_id, "resolution": "client", "success": True})
                 
             elif strategy == "server":
@@ -1125,18 +1139,55 @@ def sync_resolve_conflict():
                 results.append({"id": note_id, "resolution": "server", "success": True})
                 
             elif strategy == "merge":
-                # 合并版本（简单实现：使用客户端内容）
+                # 合并版本：使用客户端提供的合并内容
                 title = resolution.get("title", "")
                 content = resolution.get("content", "")
-                updated_at = now_iso()
+                updated_at = resolution.get("updatedAt", now_iso())
+                tags = resolution.get("tags", [])
                 
                 base = f"{slugify(title)}_{note_id}"
                 md_path = note_dir / f"{base}.md"
                 meta_path = note_dir / f"{base}.json"
                 
+                # 如果标题为空，尝试从现有文件恢复
+                if not title:
+                    current_meta = index_map.get(str(note_id)) or {}
+                    old_base = current_meta.get("base")
+                    if old_base:
+                        old_meta_path = note_dir / f"{old_base}.json"
+                        if old_meta_path.exists():
+                            try:
+                                old_meta = json.loads(old_meta_path.read_text(encoding="utf-8"))
+                                title = old_meta.get("title", "")
+                            except Exception:
+                                pass
+                    if not title:
+                        title = "未命名笔记"
+                    base = f"{slugify(title)}_{note_id}"
+                    md_path = note_dir / f"{base}.md"
+                    meta_path = note_dir / f"{base}.json"
+                
                 md_path.write_text(content, encoding="utf-8")
-                meta = {"id": note_id, "title": title, "updatedAt": updated_at, "tags": resolution.get("tags", [])}
+                meta = {"id": note_id, "title": title, "updatedAt": updated_at, "tags": tags}
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+                
+                # 清理旧文件
+                current_meta = index_map.get(str(note_id)) or {}
+                old_base = current_meta.get("base")
+                if old_base and old_base != base:
+                    (note_dir / f"{old_base}.json").unlink(missing_ok=True)
+                    (note_dir / f"{old_base}.md").unlink(missing_ok=True)
+                
+                # 更新索引
+                current_ms = int(datetime.utcnow().timestamp() * 1000)
+                index_map[str(note_id)] = {
+                    "id": str(note_id),
+                    "title": title,
+                    "base": base,
+                    "updatedAt": updated_at,
+                    "modified_at": current_ms,
+                }
+                index_changed = True
                 
                 results.append({"id": note_id, "resolution": "merge", "success": True})
                 
@@ -1147,6 +1198,9 @@ def sync_resolve_conflict():
                 "success": False,
                 "error": str(e)
             })
+    
+    if index_changed:
+        save_note_index(note_dir, index_map)
     
     return jsonify({"results": results})
 

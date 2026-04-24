@@ -26,6 +26,179 @@ function enforceLoginPage() {
     }
 }
 
+function initGlobalHoverTooltip() {
+    if (window.__globalHoverTooltipInitialized) return;
+    window.__globalHoverTooltipInitialized = true;
+
+    const tooltip = document.getElementById("globalHoverTooltip");
+    if (!tooltip) return;
+
+    const scopeSelector = "#editorHeaderRight button, #editorFooterActions button";
+    let activeElement = null;
+    let showTimer = null;
+    let hideTimer = null;
+
+    function isDisabled(el) {
+        return !!(el.disabled || el.getAttribute("aria-disabled") === "true" || el.dataset.tooltipSkip === "true");
+    }
+
+    function normalizeTooltipText(text) {
+        return String(text || "").replace(/\s+/g, " ").trim();
+    }
+
+    function extractTextFallback(el) {
+        if (!el) return "";
+        if (el.dataset && el.dataset.tooltip) return normalizeTooltipText(el.dataset.tooltip);
+        if (el.dataset && el.dataset.cnTooltip) return normalizeTooltipText(el.dataset.cnTooltip);
+
+        const title = el.getAttribute("title");
+        if (title) {
+            const normalizedTitle = normalizeTooltipText(title);
+            el.dataset.cnTooltip = normalizedTitle;
+            el.removeAttribute("title");
+            if (!el.getAttribute("aria-label")) {
+                el.setAttribute("aria-label", normalizedTitle);
+            }
+            return normalizedTitle;
+        }
+
+        const ariaLabel = el.getAttribute("aria-label");
+        if (ariaLabel) return normalizeTooltipText(ariaLabel);
+
+        const placeholder = el.getAttribute("placeholder");
+        if (placeholder) return normalizeTooltipText(placeholder);
+
+        const text = normalizeTooltipText(el.innerText || el.textContent || "");
+        if (text) return text.slice(0, 80);
+
+        const name = el.getAttribute("name");
+        return name ? normalizeTooltipText(name) : "";
+    }
+
+    function resolveInteractiveTarget(node) {
+        if (!node || !node.closest) return null;
+        const target = node.closest(scopeSelector);
+        if (!target || isDisabled(target)) return null;
+        return target;
+    }
+
+    function clearTimers() {
+        if (showTimer) {
+            clearTimeout(showTimer);
+            showTimer = null;
+        }
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        }
+    }
+
+    function setTooltipPosition(target) {
+        const margin = 12;
+        const gap = 12;
+        const targetRect = target.getBoundingClientRect();
+        const rect = tooltip.getBoundingClientRect();
+        let placement = "bottom";
+        let left = targetRect.left + (targetRect.width / 2) - (rect.width / 2);
+        let top = targetRect.bottom + gap;
+
+        if (top + rect.height > window.innerHeight - margin) {
+            top = targetRect.top - rect.height - gap;
+            placement = "top";
+        }
+
+        if (top < margin) {
+            top = Math.min(window.innerHeight - rect.height - margin, targetRect.bottom + gap);
+            placement = "bottom";
+        }
+
+        if (left < margin) left = margin;
+        if (left + rect.width > window.innerWidth - margin) {
+            left = window.innerWidth - rect.width - margin;
+        }
+
+        tooltip.dataset.placement = placement;
+
+        tooltip.style.left = left + "px";
+        tooltip.style.top = top + "px";
+    }
+
+    function showTooltipForElement(el) {
+        const message = extractTextFallback(el);
+        if (!message) {
+            hideTooltip();
+            return;
+        }
+
+        clearTimers();
+        activeElement = el;
+        tooltip.textContent = message;
+        tooltip.classList.add("is-visible");
+        tooltip.setAttribute("aria-hidden", "false");
+        setTooltipPosition(el);
+    }
+
+    function hideTooltip() {
+        clearTimers();
+        activeElement = null;
+        tooltip.classList.remove("is-visible");
+        tooltip.setAttribute("aria-hidden", "true");
+    }
+
+    function scheduleShow(target, immediate) {
+        clearTimers();
+        showTimer = setTimeout(function() {
+            showTooltipForElement(target);
+        }, immediate ? 0 : 140);
+    }
+
+    function scheduleHide() {
+        clearTimers();
+        hideTimer = setTimeout(function() {
+            hideTooltip();
+        }, 90);
+    }
+
+    document.addEventListener("mouseover", function(event) {
+        const target = resolveInteractiveTarget(event.target);
+        if (!target) {
+            return;
+        }
+        if (target === activeElement) {
+            clearTimers();
+            return;
+        }
+        scheduleShow(target, false);
+    });
+
+    document.addEventListener("mouseout", function(event) {
+        const target = resolveInteractiveTarget(event.target);
+        if (!target) return;
+        const related = event.relatedTarget;
+        if (related && target.contains(related)) return;
+        if (target === activeElement || target === resolveInteractiveTarget(event.target)) {
+            scheduleHide();
+        }
+    });
+
+    document.addEventListener("focusin", function(event) {
+        const target = resolveInteractiveTarget(event.target);
+        if (!target) return;
+        scheduleShow(target, true);
+    });
+
+    document.addEventListener("focusout", function(event) {
+        if (activeElement && event.target === activeElement) scheduleHide();
+    });
+
+    document.addEventListener("scroll", function() {
+        if (activeElement) setTooltipPosition(activeElement);
+    }, true);
+    window.addEventListener("resize", function() {
+        if (activeElement) setTooltipPosition(activeElement);
+    });
+}
+
 /**
  * @param {string} [userId] 登录用户名（与后端 session 一致）；省略时从 /api/auth/me 获取
  */
@@ -80,6 +253,7 @@ async function runAppInit(userId) {
         if (state.notes.length > 0) {
             renderNoteList();
             if (window.renderNoteTagFilter) window.renderNoteTagFilter();
+            if (window.renderTagCloud) window.renderTagCloud();
             if (state.currentNoteId) loadNote(state.currentNoteId);
             return;
         }
@@ -102,13 +276,16 @@ async function runAppInit(userId) {
             }
             renderNoteList();
             if (window.renderNoteTagFilter) window.renderNoteTagFilter();
+            if (window.renderTagCloud) window.renderTagCloud();
             if (state.currentNoteId) loadNote(state.currentNoteId);
         });
     })();
     if (window.loadChatHistoryList) window.loadChatHistoryList();
-    if (window.innerWidth < 768) toggleSidebar();
-    if (state.chatOpen) toggleAIChat();
-    if (state.eventOpen) toggleEventModule();
+    if (typeof window.initializeResponsiveUI === "function") {
+        window.initializeResponsiveUI();
+    } else if (typeof window.applyResponsiveLayout === "function") {
+        window.applyResponsiveLayout();
+    }
     document.addEventListener("click", (e) => {
         const dropdown = document.getElementById("sortDropdown");
         const btn = document.getElementById("sortBtn");
@@ -154,6 +331,12 @@ window.handleLogout = async function() {
 };
 
 document.addEventListener("DOMContentLoaded", async function() {
+    initGlobalHoverTooltip();
+    if (typeof window.initializeResponsiveUI === "function") {
+        window.initializeResponsiveUI();
+    } else if (typeof window.applyResponsiveLayout === "function") {
+        window.applyResponsiveLayout();
+    }
     try {
         const r = await fetch(window.cnApi("api/auth/me"), { credentials: "include", cache: "no-store" });
         if (r.status === 401) {

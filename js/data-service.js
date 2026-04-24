@@ -337,16 +337,39 @@ class DataService {
 
   /**
    * 处理同步冲突
+   * 将冲突交给 conflictManager 显示对比UI，由用户手动选择解决策略
    */
   async handleConflicts(conflicts) {
+    if (!conflicts || conflicts.length === 0) return;
+    console.warn('[DataService] Conflicts detected, opening resolution UI:', conflicts);
+
+    // 将冲突数据补充完整（包含本地笔记信息）
+    const enrichedConflicts = [];
     for (const conflict of conflicts) {
-      // 自动使用客户端版本（可以改为提示用户）
-      console.log('[DataService] Resolving conflict for note:', conflict.id);
-      
-      const note = await this.db.getNote(conflict.id);
-      if (note) {
-        // 重新推送客户端版本
-        await this.db.addToSyncQueue(conflict.id, 'update');
+      try {
+        const note = await this.db.getNote(conflict.id);
+        enrichedConflicts.push({
+          ...conflict,
+          localTitle: note ? note.title : '',
+          localContent: note ? note.content : ''
+        });
+      } catch (e) {
+        enrichedConflicts.push(conflict);
+      }
+    }
+
+    // 如果有 conflictManager 则使用UI，否则回退到自动重试
+    if (typeof window !== 'undefined' && window.conflictManager) {
+      window.conflictManager.enqueueConflicts(enrichedConflicts);
+      showToast(`检测到 ${enrichedConflicts.length} 个同步冲突，请手动解决`, 5000);
+    } else {
+      // 回退：自动使用客户端版本（重新加入同步队列）
+      for (const conflict of conflicts) {
+        console.log('[DataService] Auto-resolving conflict for note:', conflict.id);
+        const note = await this.db.getNote(conflict.id);
+        if (note) {
+          await this.db.addToSyncQueue(conflict.id, 'update');
+        }
       }
     }
   }

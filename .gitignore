@@ -27,6 +27,18 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+.codex
+.devmanager/
+.kimi/
+
+# 运行期产物与本地同步缓存
+uploads/
+sync_state/
+
+# 临时备份 / 迁移残留
+*.bak
+*.bak*
+*.pre_*
 
 # ========== 可上传到 GitHub ==========
 # 除上述忽略项外，以下都会上传：
