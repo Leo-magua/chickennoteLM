@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChickenNote · Local</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', sans-serif; }
+  body { background: #f1f5f9; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .prose-md h1 { font-size: 1.6rem; font-weight: 600; margin: 1rem 0 .5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: .3rem;}
+  .prose-md h2 { font-size: 1.3rem; font-weight: 600; margin: .9rem 0 .4rem; }
+  .prose-md h3 { font-size: 1.1rem; font-weight: 600; margin: .8rem 0 .3rem; }
+  .prose-md p { margin: .5rem 0; line-height: 1.7; }
+  .prose-md ul, .prose-md ol { margin: .5rem 0; padding-left: 1.5rem; }
+  .prose-md li { margin: .2rem 0; }
+  .prose-md code { background:#f1f5f9; padding:.1rem .3rem; border-radius:.2rem; font-family:'JetBrains Mono',monospace; font-size:.9em;}
+  .prose-md pre { background:#0f172a; color:#e2e8f0; padding:1rem; border-radius:.5rem; overflow-x:auto; margin:.8rem 0;}
+  .prose-md pre code { background:transparent; color:inherit; padding:0;}
+  .prose-md table { border-collapse:collapse; margin:.8rem 0; width:auto;}
+  .prose-md th, .prose-md td { border:1px solid #cbd5e1; padding:.35rem .6rem;}
+  .prose-md th { background:#f1f5f9;}
+  .prose-md blockquote { border-left:3px solid #94a3b8; padding:.2rem .8rem; color:#475569; background:#f8fafc; margin:.6rem 0;}
+  .prose-md a { color:#2563eb; text-decoration:underline;}
+
+  .tree-item { user-select:none; }
+  .tree-item:hover > .tree-row { background:#f1f5f9; }
+  .tree-item.active > .tree-row { background:#dbeafe; color:#1e40af; font-weight:500;}
+
+  textarea.editor { font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.6; resize:none; outline:none;}
+</style>
+</head>
+<body class="h-screen">
+<div class="h-screen flex flex-col">
+
+  <!-- Top bar -->
+  <header class="h-12 bg-white border-b border-slate-200 flex items-center px-3 gap-3 flex-shrink-0">
+    <div class="font-semibold text-slate-700 flex items-center gap-2">
+      <svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v10l9 5 9-5V7z"/></svg>
+      ChickenNote
+      <span class="text-xs font-normal text-slate-400">Local</span>
+    </div>
+    <div class="flex-1"></div>
+
+    <!-- Project picker -->
+    <select id="projectSelect" class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"></select>
+    <button id="addProjectBtn" title="添加项目" class="p-1.5 hover:bg-slate-100 rounded text-slate-500">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    </button>
+    <button id="refreshBtn" title="刷新 (Cmd/Ctrl+R)" class="p-1.5 hover:bg-slate-100 rounded text-slate-500">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0115.5-3m0 12A9 9 0 014.5 15"/></svg>
+    </button>
+    <span id="statusIndicator" class="text-xs text-slate-400 min-w-[90px] text-right"></span>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Sidebar: file tree -->
+    <aside class="w-72 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 overflow-hidden">
+      <div class="px-3 py-2 border-b border-slate-200 flex items-center justify-between">
+        <input id="filterInput" type="text" placeholder="过滤文件名…" class="flex-1 text-sm px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+        <button id="newFileBtn" title="新建笔记" class="ml-2 p-1 hover:bg-slate-100 rounded text-slate-500">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        </button>
+      </div>
+      <div id="treePane" class="flex-1 overflow-y-auto text-sm py-1"></div>
+      <div id="projMeta" class="px-3 py-1.5 text-[11px] text-slate-400 border-t border-slate-200 truncate"></div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-white">
+      <!-- File header -->
+      <div id="fileHeader" class="h-11 border-b border-slate-200 flex items-center px-4 gap-3 flex-shrink-0">
+        <span id="currentPath" class="mono text-sm text-slate-600 truncate flex-1">未打开文件</span>
+        <div id="modeToggle" class="hidden items-center bg-slate-100 rounded text-xs">
+          <button data-mode="edit" class="px-2 py-1 rounded text-slate-600">编辑</button>
+          <button data-mode="preview" class="px-2 py-1 rounded text-slate-600">预览</button>
+          <button data-mode="split" class="px-2 py-1 rounded text-slate-600">分栏</button>
+        </div>
+        <button id="saveBtn" class="hidden px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">保存</button>
+        <span id="saveStatus" class="text-xs text-slate-400"></span>
+        <button id="deleteBtn" class="hidden p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded" title="删除">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a2 2 0 012-2h4a2 2 0 012 2v3"/></svg>
+        </button>
+      </div>
+
+      <!-- Content area -->
+      <div id="contentArea" class="flex-1 overflow-hidden relative">
+        <div id="emptyState" class="h-full flex items-center justify-center text-slate-400 text-sm flex-col gap-2">
+          <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          选择左侧文件开始查看
+        </div>
+
+        <!-- Split container -->
+        <div id="splitContainer" class="hidden h-full flex">
+          <textarea id="editorTA" class="editor w-full h-full p-4 border-r border-slate-100" spellcheck="false"></textarea>
+          <div id="previewPane" class="w-1/2 h-full overflow-y-auto p-6 prose-md hidden"></div>
+        </div>
+
+        <!-- Readonly preview -->
+        <div id="readonlyPane" class="hidden h-full overflow-y-auto"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Add-project modal -->
+<div id="addProjModal" class="hidden fixed inset-0 bg-slate-900/60 z-50 items-center justify-center">
+  <div class="bg-white rounded-lg shadow-xl p-5 w-96">
+    <h3 class="font-semibold text-slate-700 mb-3">添加项目目录</h3>
+    <label class="block text-xs text-slate-500 mb-1">目录绝对路径</label>
+    <input id="addProjPath" type="text" placeholder="~/Documents/my-project" class="w-full border border-slate-300 rounded px-2 py-1.5 mb-3 text-sm mono focus:outline-none focus:ring-2 focus:ring-blue-300"/>
+    <label class="block text-xs text-slate-500 mb-1">显示名（可选，默认取目录名）</label>
+    <input id="addProjName" type="text" class="w-full border border-slate-300 rounded px-2 py-1.5 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"/>
+    <div class="flex justify-end gap-2">
+      <button id="addProjCancel" class="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded">取消</button>
+      <button id="addProjOk" class="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600">确定</button>
+    </div>
+  </div>
+</div>
+
+<script src="/web/app.js"></script>
+</body>
+</html>
